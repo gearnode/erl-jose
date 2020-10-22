@@ -33,3 +33,12 @@ encode64url_test_() ->
      ?_assertEqual(<<"Zm9vYg==">>, jose_base:encode64url(<<"foob">>)),
      ?_assertEqual(<<"Zm9vYmE=">>, jose_base:encode64url(<<"fooba">>)),
      ?_assertEqual(<<"Zm9vYmFy">>, jose_base:encode64url(<<"foobar">>))].
+
+encode16_test_() ->
+    [?_assertEqual(<<>>, jose_base:encode16(<<>>)),
+     ?_assertEqual(<<"66">>, jose_base:encode16(<<"f">>)),
+     ?_assertEqual(<<"666F">>, jose_base:encode16(<<"fo">>)),
+     ?_assertEqual(<<"666F6F">>, jose_base:encode16(<<"foo">>)),
+     ?_assertEqual(<<"666F6F62">>, jose_base:encode16(<<"foob">>)),
+     ?_assertEqual(<<"666F6F6261">>, jose_base:encode16(<<"fooba">>)),
+     ?_assertEqual(<<"666F6F626172">>, jose_base:encode16(<<"foobar">>))].

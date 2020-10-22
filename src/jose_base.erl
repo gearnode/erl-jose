@@ -14,7 +14,7 @@
 
 -module(jose_base).
 
--export([encode64/1, encode64url/1]).
+-export([encode64/1, encode64url/1, encode16/1]).
 
 -spec encode64(Bin) -> Base64 when
       Bin :: binary(),
@@ -76,3 +76,23 @@ enc64url(62) ->
     $-;
 enc64url(63) ->
     $_.
+
+-spec encode16(Bin) -> Base16 when
+      Bin :: binary(),
+      Base16 :: binary().
+encode16(Bin) ->
+    encode16(Bin, <<>>).
+
+-spec encode16(Bin, Base16) -> Base16 when
+      Bin :: binary(),
+      Base16 :: binary().
+encode16(<<>>, Acc) ->
+    Acc;
+encode16(<<A:4, B:4, Rest/binary>>, Acc) ->
+    encode16(Rest, <<Acc/binary, (enc16(A)), (enc16(B))>>).
+
+-spec enc16(0..15) -> byte().
+enc16(Char) when Char =< 9 ->
+    Char + $0;
+enc16(Char) when Char =< 15 ->
+    Char + $A - 10.
