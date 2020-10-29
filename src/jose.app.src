@@ -6,7 +6,9 @@
    [kernel,
     stdlib,
     crypto,
-    public_key
+    public_key,
+    uri,
+    json
    ]},
   {env,[]},
   {modules, []},
