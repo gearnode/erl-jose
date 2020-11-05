@@ -14,15 +14,15 @@
 
 -module(jose_jws).
 
--export([produce_compact/4]).
+-export([encode_compact/4]).
 
 -export_type([payload/0]).
 
 -type payload() :: binary().
 
--spec produce_compact(jose:header(), payload(), jose_jwa:alg(), Key) -> binary() when
+-spec encode_compact(jose:header(), payload(), jose_jwa:alg(), Key) -> binary() when
       Key :: jose_jwa:hmac_key() | jose_jwa:ecdsa_private_key().
-produce_compact(Header, Payload, Alg, Key) ->
+encode_compact(Header, Payload, Alg, Key) ->
     EncodedHeader = jose_base:encode64url(json:serialize(Header, #{return_binary => true}), #{padding => false}),
     EncodedPayload = jose_base:encode64url(Payload, #{padding => false}),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
