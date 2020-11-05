@@ -1,15 +1,3 @@
-# Introduction
-This repository contains [RFC 7515](https://tools.ietf.org/html/rfc7515), [RFC
-7516](https://tools.ietf.org/html/rfc7516), [RFC
-7517](https://tools.ietf.org/html/rfc7517) and [RFC
-7518](https://tools.ietf.org/html/rfc7518) implementation for Erlang.
-
-# Documentation
-TODO
-
-# License
-Released under the ISC license.
-
 Copyright (c) 2020 Bryan Frimin <bryan@frimin.fr>.
 
 Permission to use, copy, modify, and/or distribute this software for any
