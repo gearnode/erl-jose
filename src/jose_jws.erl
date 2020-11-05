@@ -14,9 +14,7 @@
 
 -module(jose_jws).
 
--export([produce_compact/4,
-         produce_flattened_json/4,
-         produce_flattened_json/5]).
+-export([produce_compact/4]).
 
 -export_type([payload/0]).
 
@@ -30,24 +28,3 @@ produce_compact(Header, Payload, Alg, Key) ->
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
     Signature = jose_base:encode64url(jose_jwa:sign(Message, Alg, Key), #{padding => false}),
     <<Message/binary, $., Signature/binary>>.
-
--spec produce_flattened_json(jose:header(), payload(), jose_jwa:alg(), Key) -> binary() when
-      Key :: jose_jwa:hmac_key() | jose_jwa:ecdsa_private_key().
-produce_flattened_json(Header, Payload, Alg, Key) ->
-    produce_flattened_json(Header, Payload, Alg, Key, [alg]).
-
--spec produce_flattened_json(jose:header(), payload(), jose_jwa:alg(), Key, [atom()]) -> binary() when
-      Key :: jose_jwa:hmac_key() | jose_jwa:ecdsa_private_key().
-produce_flattened_json(Header, Payload, Alg, Key, ProtectedHeaderKeys) ->
-    EncodedPayload = jose_base:encode64url(Payload, #{padding => false}),
-    SerializedHeader = json:serialize(Header, #{return_binary => true}),
-    EncodedHeader = jose_base:encode64url(SerializedHeader, #{padding => false}),
-    Signature = jose_jwa:sign(<<EncodedHeader/binary, $., EncodedPayload/binary>>, Alg, Key),
-    EncodedSignature = jose_base:encode64url(Signature, #{return_binary => true}),
-    ProtectedHeader = maps:with(ProtectedHeaderKeys, Header),
-    SerializedProtectedHeader = json:serialize(ProtectedHeader, #{return_binary => true}),
-    EncodedProtectedHeader = jose_base:encode64url(SerializedProtectedHeader, #{padding => false}),
-    PublicHeader = maps:without(ProtectedHeaderKeys, Header),
-    Message = #{signature => EncodedSignature, payload => EncodedPayload,
-                header => PublicHeader, protected => EncodedProtectedHeader},
-    json:serialize(Message, #{return_binary => true}).
