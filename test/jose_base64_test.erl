@@ -24,3 +24,12 @@ encode_test_() ->
      ?_assertEqual(<<"Zm9vYg">>, jose_base64:encode(<<"foob">>)),
      ?_assertEqual(<<"Zm9vYmE">>, jose_base64:encode(<<"fooba">>)),
      ?_assertEqual(<<"Zm9vYmFy">>, jose_base64:encode(<<"foobar">>))].
+
+decode_test_() ->
+    [?_assertEqual({ok, <<>>}, jose_base64:decode(<<>>)),
+     ?_assertEqual({ok, <<"f">>}, jose_base64:decode(<<"Zg">>)),
+     ?_assertEqual({ok, <<"fo">>}, jose_base64:decode(<<"Zm8">>)),
+     ?_assertEqual({ok, <<"foo">>}, jose_base64:decode(<<"Zm9v">>)),
+     ?_assertEqual({ok, <<"foob">>}, jose_base64:decode(<<"Zm9vYg">>)),
+     ?_assertEqual({ok, <<"fooba">>}, jose_base64:decode(<<"Zm9vYmE">>)),
+     ?_assertEqual({ok, <<"foobar">>}, jose_base64:decode(<<"Zm9vYmFy">>))].

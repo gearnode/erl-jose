@@ -14,7 +14,55 @@
 
 -module(jose_base64).
 
--export([encode/1]).
+-export([encode/1, decode/1]).
+
+-spec decode(binary()) -> {ok, binary()} | {error, term()}.
+decode(Bin) ->
+    try decode(Bin, <<>>) of
+        Result ->
+            Result
+    catch
+        error:Reason ->
+            {error, Reason}
+    end.
+
+-spec decode(binary(), binary()) -> {ok, binary()} | {error, term()}.
+decode(<<>>, Acc) ->
+    {ok, Acc};
+decode(<<A:8, B:8, C:8, D:8, Rest/binary>>, Acc) ->
+    A1 = dec64url(A),
+    B1 = dec64url(B),
+    C1 = dec64url(C),
+    D1 = dec64url(D),
+    Data = <<A1:6, B1:6, C1:6, D1:6>>,
+    decode(Rest, <<Acc/binary, Data/binary>>);
+decode(<<A:8, B:8>>, Acc) ->
+    A1 = dec64url(A),
+    B1 = dec64url(B) bsr 4,
+    Data = <<A1:6, B1:2>>,
+    decode(<<>>, <<Acc/binary, Data/binary>>);
+decode(<<A:8, B:8, C:8>>, Acc) ->
+    A1 = dec64url(A),
+    B1 = dec64url(B),
+    C1 = dec64url(C) bsr 2,
+    Data = <<A1:6, B1:6, C1:4>>,
+    decode(<<>>, <<Acc/binary, Data/binary>>);
+decode(Data, _) ->
+    {error, {invalid_data, Data}}.
+
+-spec dec64url($A..$Z | $a..$z | $0..$9 | $- | $_) -> 0..63.
+dec64url(Char) when Char >= $A, Char =< $Z ->
+    Char - $A;
+dec64url(Char) when Char >= $a, Char =< $z ->
+    Char - $a + 26;
+dec64url(Char) when Char >= $0, Char =< $9 ->
+    Char - $0 + 52;
+dec64url($-) ->
+    62;
+dec64url($_) ->
+    63;
+dec64url(Char) ->
+    error({invalid_base64_char, Char}).
 
 -spec encode(binary()) -> binary().
 encode(Bin) ->
