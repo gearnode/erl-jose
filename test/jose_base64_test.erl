@@ -12,20 +12,15 @@
 %% OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 %% PERFORMANCE OF THIS SOFTWARE.
 
--module(jose_jws).
+-module(jose_base64_test).
 
--export([encode_compact/4]).
+-include_lib("eunit/include/eunit.hrl").
 
--export_type([payload/0]).
-
--type payload() :: binary().
--type jws_compact() :: binary().
-
--spec encode_compact(jose:header(), payload(), jose_jwa:alg(), Key) -> jws_compact() when
-      Key :: jose_jwa:hmac_key() | jose_jwa:ecdsa_private_key().
-encode_compact(Header, Payload, Alg, Key) ->
-    EncodedHeader = jose_base64:encode(json:serialize(Header, #{return_binary => true})),
-    EncodedPayload = jose_base64:encode(Payload),
-    Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
-    Signature = jose_base64:encode(jose_jwa:sign(Message, Alg, Key)),
-    <<Message/binary, $., Signature/binary>>.
+encode_test_() ->
+    [?_assertEqual(<<>>, jose_base64:encode(<<>>)),
+     ?_assertEqual(<<"Zg">>, jose_base64:encode(<<"f">>)),
+     ?_assertEqual(<<"Zm8">>, jose_base64:encode(<<"fo">>)),
+     ?_assertEqual(<<"Zm9v">>, jose_base64:encode(<<"foo">>)),
+     ?_assertEqual(<<"Zm9vYg">>, jose_base64:encode(<<"foob">>)),
+     ?_assertEqual(<<"Zm9vYmE">>, jose_base64:encode(<<"fooba">>)),
+     ?_assertEqual(<<"Zm9vYmFy">>, jose_base64:encode(<<"foobar">>))].
