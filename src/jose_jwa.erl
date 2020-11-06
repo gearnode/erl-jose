@@ -25,7 +25,9 @@
               ecdsa/0,
               hmac_key/0,
               ecdsa_public_key/0,
-              ecdsa_private_key/0]).
+              ecdsa_private_key/0,
+              sign_key/0,
+              verify_key/0]).
 
 -type alg() :: hmac() | ecdsa() | none.
 -type hmac() :: hs256 | hs384 | hs512.
@@ -34,6 +36,9 @@
 -type hmac_key() :: binary().
 -type ecdsa_public_key() :: binary().
 -type ecdsa_private_key() :: binary().
+
+-type sign_key() :: hmac_key() | ecdsa_private_key().
+-type verify_key() :: hmac_key() | ecdsa_public_key().
 
 -spec supported_algorithms() -> [alg()].
 supported_algorithms() ->
