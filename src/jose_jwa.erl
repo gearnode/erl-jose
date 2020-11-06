@@ -46,7 +46,7 @@ supported_algorithms() ->
      es256, es384, es512,
      none].
 
--spec support(alg()) -> boolean().
+-spec support(alg() | binary()) -> boolean().
 support(Alg) when is_atom(Alg) ->
     lists:member(Alg, supported_algorithms());
 support(Alg) ->
