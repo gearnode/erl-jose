@@ -44,7 +44,7 @@ decode_compact(Token, Alg, Key) ->
         case binary:split(Token, <<$.>>, [global]) of
             [EncHeader, EncPayload, EncSig] ->
                 Header = decode_header(EncHeader),
-                Payload = decode_payload(EncPayload),
+                Payload = decode_payload(EncPayload, maps:get(b64, Header, true)),
                 Signature = decode_signature(EncSig);
             _ ->
                 {error, invalid_format}
@@ -151,6 +151,10 @@ parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
     Header#{crit => lists:map(F, Value)};
 parse_header_parameter_name(<<"crit">>, _Value, _Header) ->
     throw({error, {invalid_header, {crit, invalid_format}}});
+parse_header_parameter_name(<<"b64">>, Value, Header) when is_boolean(Value) ->
+    Header#{b64 => Value};
+parse_header_parameter_name(<<"b64">>, _Value, _Header) ->
+    throw({error, {invalid_header, {b64, invalid_format}}});
 parse_header_parameter_name(Key, Value, Header) ->
     Header#{Key => Value}.
 
@@ -174,8 +178,10 @@ parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->
 parse_x5c_header_parameter_name(_Value, _Acc) ->
     throw({error, {invalid_header, {x5c, invalid_format}}}).
 
--spec decode_payload(binary()) -> binary().
-decode_payload(Data) when is_binary(Data) ->
+-spec decode_payload(binary(), boolean()) -> binary().
+decode_payload(Data, false) ->
+    Data;
+decode_payload(Data, true) ->
     case jose_base64:decodeurl(Data) of
         {ok, Payload} ->
             Payload;
@@ -184,7 +190,7 @@ decode_payload(Data) when is_binary(Data) ->
     end.
 
 -spec decode_signature(binary()) -> binary().
-decode_signature(Data) when is_binary(Data) ->
+decode_signature(Data) ->
     case jose_base64:decodeurl(Data) of
         {ok, Signature} ->
             Signature;

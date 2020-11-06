@@ -31,6 +31,7 @@
                     'x5t#S256' => certificate_thumbprint(),
                     typ => typ(),
                     cty => cty(),
+                    b64 => boolean(),
                     crit => [header_parameter_name()]}.
 
 -type header_parameter_name() :: binary().
