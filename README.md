@@ -1,8 +1,9 @@
 # Introduction
 This repository contains [RFC 7515](https://tools.ietf.org/html/rfc7515),
 [7516](https://tools.ietf.org/html/rfc7516),
-[7517](https://tools.ietf.org/html/rfc7517) and
-[7518](https://tools.ietf.org/html/rfc7518) implementation for Erlang.
+[7517](https://tools.ietf.org/html/rfc7517),
+[7518](https://tools.ietf.org/html/rfc7518) and
+[7797](https://tools.ietf.org/html/rfc7797) implementation for Erlang.
 
 # Documentation
 TODO
