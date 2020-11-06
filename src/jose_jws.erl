@@ -45,8 +45,7 @@ decode_compact(Token, Alg, Key) ->
             [EncHeader, EncPayload, EncSig] ->
                 Header = decode_header(EncHeader),
                 Payload = decode_payload(EncPayload),
-                Signature = decode_signature(EncSig),
-                Header;
+                Signature = decode_signature(EncSig);
             _ ->
                 {error, invalid_format}
         end
@@ -129,7 +128,8 @@ parse_header_parameter_name(<<"cty">>, Value, Header) ->
 parse_header_parameter_name(<<"crit">>, [], Header) ->
     throw({error, {invalid_header, {crit, invalid_format}}});
 parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
-    F = fun (X) when is_binary(X) -> X;
+    F = fun
+            (X) when is_binary(X) -> X;
             (_) -> throw({error, {invalid_header, {crit, invalid_format}}})
         end,
     Header#{crit => lists:map(F, Value)};
@@ -144,8 +144,13 @@ parse_x5c_header_parameter_name([], Acc) ->
 parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->
     case jose_base64:decode(H) of
         {ok, Data} ->
-            % TODO: der decode the entity depending of the alg header.
-            parse_x5c_header_parameter_name(T, [Data | Acc]);
+            Cert = try
+                       public_key:pkix_decode_cert(Data, plain)
+                   catch
+                       error:Reason ->
+                           throw({error, {invalid_header, {x5c, Reason}}})
+                   end,
+            parse_x5c_header_parameter_name(T, [Cert | Acc]);
         {error, Reason} ->
             throw({error, {invalid_header, {x5c, Reason}}})
     end;
