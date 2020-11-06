@@ -31,10 +31,10 @@
 -spec encode_compact(jose:header(), payload(), jose_jwa:alg(), jose_jwa:sign_key())->
           compact().
 encode_compact(Header, Payload, Alg, Key) ->
-    EncodedHeader = jose_base64:encode(json:serialize(Header, #{return_binary => true})),
-    EncodedPayload = jose_base64:encode(Payload),
+    EncodedHeader = jose_base64:encodeurl(json:serialize(Header, #{return_binary => true})),
+    EncodedPayload = jose_base64:encodeurl(Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
-    Signature = jose_base64:encode(jose_jwa:sign(Message, Alg, Key)),
+    Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key)),
     <<Message/binary, $., Signature/binary>>.
 
 -spec decode_compact(compact(), jose_jwa:alg(), jose_jwa:verify_key()) ->
@@ -45,7 +45,8 @@ decode_compact(Token, Alg, Key) ->
             [EncHeader, EncPayload, EncSig] ->
                 Header = decode_header(EncHeader),
                 Payload = decode_payload(EncPayload),
-                Signature = decode_signature(EncSig);
+                Signature = decode_signature(EncSig),
+                Header;
             _ ->
                 {error, invalid_format}
         end
@@ -56,7 +57,7 @@ decode_compact(Token, Alg, Key) ->
 
 -spec decode_header(binary()) -> jose:header().
 decode_header(Data) ->
-    case jose_base64:decode(Data) of
+    case jose_base64:decodeurl(Data) of
         {ok, Header} ->
             parse_header_object(Header);
         {error, Reason} ->
@@ -102,16 +103,20 @@ parse_header_parameter_name(<<"x5u">>, Value, Header) ->
         {error, Reason} ->
             throw({error, {invalid_header, {x5u, Reason}}})
     end;
-%% parse_header_parameter_name(<<"x5c">>, [H | T], Header) ->
+parse_header_parameter_name(<<"x5c">>, Value, Header) when is_list(Value) ->
+    Chain = parse_x5c_header_parameter_name(Value, []),
+    Header#{x5c => Chain};
+parse_header_parameter_name(<<"x5c">>, _Value, _Header) ->
+    throw({error, {invalid_header, {x5c, invalid_format}}});
 parse_header_parameter_name(<<"x5t">>, Value, Header) ->
-    case jose_base64:decode(Value) of
+    case jose_base64:decodeurl(Value) of
         {ok, Thumbprint} ->
             Header#{x5t => Thumbprint};
         {error, Reason} ->
             throw({error, {invalid_header, {x5t, Reason}}})
     end;
 parse_header_parameter_name(<<"x5t#S256">>, Value, Header) ->
-    case jose_base64:decode(Value) of
+    case jose_base64:decodeurl(Value) of
         {ok, Thumbprint} ->
             Header#{'x5t#S256' => Thumbprint};
         {error, Reason} ->
@@ -133,9 +138,23 @@ parse_header_parameter_name(<<"crit">>, _Value, _Header) ->
 parse_header_parameter_name(Key, Value, Header) ->
     Header#{Key => Value}.
 
+-spec parse_x5c_header_parameter_name([binary()], [binary()]) -> [binary()].
+parse_x5c_header_parameter_name([], Acc) ->
+    lists:reverse(Acc);
+parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->
+    case jose_base64:decode(H) of
+        {ok, Data} ->
+            % TODO: der decode the entity depending of the alg header.
+            parse_x5c_header_parameter_name(T, [Data | Acc]);
+        {error, Reason} ->
+            throw({error, {invalid_header, {x5c, Reason}}})
+    end;
+parse_x5c_header_parameter_name(_Value, _Acc) ->
+    throw({error, {invalid_header, {x5c, invalid_format}}}).
+
 -spec decode_payload(binary()) -> binary().
 decode_payload(Data) ->
-    case jose_base64:decode(Data) of
+    case jose_base64:decodeurl(Data) of
         {ok, Payload} ->
             Payload;
         {error, Reason} ->
@@ -144,7 +163,7 @@ decode_payload(Data) ->
 
 -spec decode_signature(binary()) -> binary().
 decode_signature(Data) ->
-    case jose_base64:decode(Data) of
+    case jose_base64:decodeurl(Data) of
         {ok, Signature} ->
             Signature;
         {error, Reason} ->
