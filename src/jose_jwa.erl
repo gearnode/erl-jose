@@ -47,8 +47,10 @@ supported_algorithms() ->
      none].
 
 -spec support(alg()) -> boolean().
+support(Alg) when is_atom(Alg) ->
+    lists:member(Alg, supported_algorithms());
 support(Alg) ->
-    lists:member(Alg, supported_algorithms()).
+    lists:member(Alg, lists:map(fun atom_to_binary/1, supported_algorithms())).
 
 -spec generate_key(alg()) -> hmac_key() | {ecdsa_public_key(), ecdsa_private_key()}.
 generate_key(none) ->

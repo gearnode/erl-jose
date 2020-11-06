@@ -50,7 +50,7 @@ decode_compact(Token, Alg, Key) ->
                 {error, invalid_format}
         end
     catch
-        thow:{error, Reason} ->
+        throw:{error, Reason} ->
             {error, Reason}
     end.
 
@@ -79,9 +79,10 @@ parse_header_parameter_names(Header) ->
 -spec parse_header_parameter_name(json:key(), json:value(), jose:header()) ->
           #{json:key() => term()}.
 parse_header_parameter_name(<<"alg">>, Value, Header) ->
-    case jose_jwa:support(Value) of
+    Alg = string:lowercase(Value),
+    case jose_jwa:support(Alg) of
         true ->
-            Header#{alg => Value};
+            Header#{alg => binary_to_atom(Alg)};
         false ->
             throw({error, {invalid_header, {alg, unsupported_alg}}})
     end;
