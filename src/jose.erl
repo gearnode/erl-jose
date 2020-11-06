@@ -26,7 +26,7 @@
                     %% jwk => jose_jwk:jwk(),
                     kid => kid(),
                     x5u => uri:uri(),
-                    x5c => [public_key:public_key()],
+                    x5c => [{'Certificate' | 'OTPCertificate', _, _, _}],
                     x5t => certificate_thumbprint(),
                     'x5t#S256' => certificate_thumbprint(),
                     typ => typ(),
