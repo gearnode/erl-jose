@@ -16,10 +16,28 @@
 
 -export([encode_compact/4, decode_compact/3]).
 
--export_type([payload/0,
+-export_type([header/0,
+              typ/0,
+              cty/0,
+              payload/0,
               compact/0,
               decode_error_reason/0]).
 
+-type header() :: #{alg => jose_jwa:alg(),
+                    jku => uri:uri(),
+                    jwk => jose_jwk:jwk(),
+                    kid => jose:kid(),
+                    x5u => uri:uri(),
+                    x5c => [jose:certificate()],
+                    x5t => jose:certificate_thumbprint(),
+                    'x5t#S256' => jose:certificate_thumbprint(),
+                    typ => typ(),
+                    cty => cty(),
+                    b64 => boolean(),
+                    crit => [jose:header_parameter_name()]}.
+
+-type typ() :: binary().
+-type cty() :: binary().
 -type payload() :: binary().
 -type compact() :: binary().
 -type decode_error_reason() :: term()
@@ -28,7 +46,7 @@
                              | {invalid_payload, term()}
                              | {invalid_signature, term()}.
 
--spec encode_compact(jose:header(), payload(), jose_jwa:alg(), jose_jwa:sign_key())->
+-spec encode_compact(header(), payload(), jose_jwa:alg(), jose_jwa:sign_key())->
           compact().
 encode_compact(Header, Payload, Alg, Key) ->
     EncodedHeader = jose_base64:encodeurl(json:serialize(Header, #{return_binary => true})),
@@ -54,16 +72,16 @@ decode_compact(Token, Alg, Key) ->
             {error, Reason}
     end.
 
--spec decode_header(binary()) -> jose:header().
+-spec decode_header(binary()) -> binary().
 decode_header(Data) ->
     case jose_base64:decodeurl(Data) of
-        {ok, Header} ->
-            parse_header_object(Header);
+        {ok, Data2} ->
+            Data2;
         {error, Reason} ->
             throw({error, {invalid_header, Reason}})
     end.
 
--spec parse_header_object(binary()) -> jose:header().
+-spec parse_header_object(binary()) -> header().
 parse_header_object(Data) ->
     case json:parse(Data, #{duplicate_key_handling => error}) of
         {ok, Header} ->
@@ -72,11 +90,11 @@ parse_header_object(Data) ->
             throw({error, {invalid_header, Reason}})
     end.
 
--spec parse_header_parameter_names(map()) -> jose:header().
+-spec parse_header_parameter_names(map()) -> header().
 parse_header_parameter_names(Header) ->
     maps:fold(fun parse_header_parameter_name/3, #{}, Header).
 
--spec parse_header_parameter_name(json:key(), json:value(), jose:header()) ->
+-spec parse_header_parameter_name(json:key(), json:value(), header()) ->
           #{json:key() => term()}.
 parse_header_parameter_name(<<"alg">>, Value, Header) when is_binary(Value)->
     Alg = string:lowercase(Value),
@@ -158,8 +176,8 @@ parse_header_parameter_name(<<"b64">>, _Value, _Header) ->
 parse_header_parameter_name(Key, Value, Header) ->
     Header#{Key => Value}.
 
--spec parse_x5c_header_parameter_name([binary()], [{'Certificate' | 'OTPCertificate', _, _, _}]) ->
-          [{'Certificate' | 'OTPCertificate', _, _, _}].
+-spec parse_x5c_header_parameter_name([binary()], [jose:certificate()]) ->
+          [jose:certificate()].
 parse_x5c_header_parameter_name([], Acc) ->
     lists:reverse(Acc);
 parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->

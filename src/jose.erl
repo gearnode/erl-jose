@@ -14,28 +14,12 @@
 
 -module(jose).
 
--export_type([header/0,
-              header_parameter_name/0,
+-export_type([header_parameter_name/0,
               kid/0,
               certificate_thumbprint/0,
-              typ/0,
-              cty/0]).
-
--type header() :: #{alg => jose_jwa:alg(),
-                    jku => uri:uri(),
-                    jwk => jose_jwk:jwk(),
-                    kid => kid(),
-                    x5u => uri:uri(),
-                    x5c => [{'Certificate' | 'OTPCertificate', _, _, _}],
-                    x5t => certificate_thumbprint(),
-                    'x5t#S256' => certificate_thumbprint(),
-                    typ => typ(),
-                    cty => cty(),
-                    b64 => boolean(),
-                    crit => [header_parameter_name()]}.
+              certificate/0]).
 
 -type header_parameter_name() :: binary().
 -type kid() :: binary().
 -type certificate_thumbprint() :: binary().
--type typ() :: binary().
--type cty() :: binary().
+-type certificate() :: {'Certificate' | 'OTPCertificate', _, _, _}.

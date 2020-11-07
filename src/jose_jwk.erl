@@ -20,7 +20,6 @@
               type/0,
               use/0,
               key_ops/0,
-              certificate_thumbprint/0,
               crv/0,
               coordinate/0,
               ecc_private_key/0,
@@ -33,11 +32,11 @@
                  use => use(),
                  key_ops => key_ops(),
                  alg => jose_jwa:alg(),
-                 kid => binary(),
+                 kid => jose:kid(),
                  x5u => uri:uri(),
-                 x5c => [{'Certificate' | 'OTPCertificate', _, _, _}],
-                 x5t => certificate_thumbprint(),
-                 'x5t#S256' => certificate_thumbprint(),
+                 x5c => [jose:certificate()],
+                 x5t => jose:certificate_thumbprint(),
+                 'x5t#S256' => jose:certificate_thumbprint(),
                  crv => crv(),
                  x => coordinate(),
                  y => coordinate(),
@@ -52,8 +51,6 @@
                  qi => non_neg_integer(),
                  oth => [oth()],
                  k => binary()}.
-
--type certificate_thumbprint() :: binary().
 
 % https://www.iana.org/assignments/jose/jose.xhtml#web-key-types
 -type type() :: 'RSA' | 'EC' | oct | 'OKP'.
