@@ -21,9 +21,9 @@
               typ/0,
               cty/0]).
 
--type header() :: #{alg := jose_jwa:alg(),
+-type header() :: #{alg => jose_jwa:alg(),
                     jku => uri:uri(),
-                    %% jwk => jose_jwk:jwk(),
+                    jwk => jose_jwk:jwk(),
                     kid => kid(),
                     x5u => uri:uri(),
                     x5c => [{'Certificate' | 'OTPCertificate', _, _, _}],
