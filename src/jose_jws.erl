@@ -57,7 +57,7 @@ reserved_header_parameter_names() ->
 -spec encode_compact(header(), payload(), jose_jwa:alg(), jose_jwa:sign_key()) ->
           compact().
 encode_compact(Header, Payload, Alg, Key) ->
-    EncodedHeader = jose_base64:encodeurl(json:serialize(Header, #{return_binary => true})),
+    EncodedHeader = serialize_header(Header),
     EncodedPayload = jose_base64:encodeurl(Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
     Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key)),
@@ -79,6 +79,44 @@ decode_compact(Token, Alg, Key) ->
         throw:{error, Reason} ->
             {error, Reason}
     end.
+
+-spec serialize_header(header()) -> map().
+serialize_header(Header) ->
+    Object = maps:fold(fun serialize_header_parameter_name/3, #{}, Header),
+    Data = json:serialize(Object, #{return_binary => true}),
+    jose_base64:encodeurl(Data).
+
+-spec serialize_header_parameter_name(atom() | binary(), term(), map()) -> #{json:key() => json:value()}.
+serialize_header_parameter_name(alg, Alg, Header) ->
+    Value = atom_to_binary(Alg),
+    Value2 = string:uppercase(Value),
+    Header#{<<"alg">> => Value2};
+serialize_header_parameter_name(jku, URI, Header) ->
+    Value = uri:serialize(URI),
+    Header#{<<"jku">> => Value};
+serialize_header_parameter_name(jwk, JWK, Header) ->
+    Header#{<<"jwk">> => JWK};
+serialize_header_parameter_name(kid, KId, Header) ->
+    Header#{<<"kid">> => KId};
+serialize_header_parameter_name(x5u, URI, Header) ->
+    Value = uri:serialize(URI),
+    Header#{<<"x5u">> => Value};
+serialize_header_parameter_name(x5c, CertChain, Header) ->
+    F = fun (X) -> jose_base64:encode(public_key:pkix_encode('OTPCertificate', X, otp)) end,
+    Value = lists:map(F, CertChain),
+    Header#{<<"x5c">> => Value};
+serialize_header_parameter_name(x5t, Fingerprint, Header) ->
+    Header#{<<"x5t">> => Fingerprint};
+serialize_header_parameter_name('x5t#S256', Fingerprint, Header) ->
+    Header#{<<"x5t#S256">> => Fingerprint};
+serialize_header_parameter_name(typ, Value, Header) ->
+    Header#{<<"typ">> => typ};
+serialize_header_parameter_name(cty, Value, Header) ->
+    Header#{<<"cty">> => cty};
+serialize_header_parameter_name(crit, Value, Header) ->
+    Header#{<<"crit">> => Value};
+serialize_header_parameter_name(Key, Value, Header) ->
+    Header#{Key => Value}.
 
 -spec decode_header(binary()) -> binary().
 decode_header(Data) ->
