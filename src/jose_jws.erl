@@ -14,7 +14,9 @@
 
 -module(jose_jws).
 
--export([encode_compact/4, decode_compact/3]).
+-export([reserved_header_parameter_names/0,
+         encode_compact/4,
+         decode_compact/3]).
 
 -export_type([header/0,
               typ/0,
@@ -46,7 +48,13 @@
                              | {invalid_payload, term()}
                              | {invalid_signature, term()}.
 
--spec encode_compact(header(), payload(), jose_jwa:alg(), jose_jwa:sign_key())->
+-spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
+reserved_header_parameter_names() ->
+    [<<"alg">>, <<"jku">>, <<"jwk">>, <<"kid">>,
+     <<"x5u">>, <<"x5c">>, <<"x5t">>, <<"x5t#S256">>,
+     <<"typ">>, <<"cty">>, <<"crit">>].
+
+-spec encode_compact(header(), payload(), jose_jwa:alg(), jose_jwa:sign_key()) ->
           compact().
 encode_compact(Header, Payload, Alg, Key) ->
     EncodedHeader = jose_base64:encodeurl(json:serialize(Header, #{return_binary => true})),
@@ -113,7 +121,7 @@ parse_header_parameter_name(<<"jku">>, Value, Header) when is_binary(Value) ->
         {error, Reason} ->
             throw({error, {invalid_header, {jku, Reason}}})
     end;
-parse_header_parameter_name(<<"jku">>, _Value, Header) ->
+parse_header_parameter_name(<<"jku">>, _Value, _Header) ->
     throw({error, {invalid_header, {jku, invalid_format}}});
 parse_header_parameter_name(<<"kid">>, Value, Header) when is_binary(Value) ->
     Header#{kid => Value};
@@ -159,12 +167,21 @@ parse_header_parameter_name(<<"cty">>, Value, Header) when is_binary(Value) ->
     Header#{cty => Value};
 parse_header_parameter_name(<<"cty">>, _Value, _Header) ->
     throw({error, {invalid_header, {cty, invalid_format}}});
-parse_header_parameter_name(<<"crit">>, [], Header) ->
+parse_header_parameter_name(<<"crit">>, [], _Header) ->
     throw({error, {invalid_header, {crit, invalid_format}}});
 parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
+    ReservedParameterNames = reserved_header_parameter_names() ++
+        jose_jwa:reserved_header_parameter_names(),
     F = fun
-            (X) when is_binary(X) -> X;
-            (_) -> throw({error, {invalid_header, {crit, invalid_format}}})
+            (X) when is_binary(X) ->
+                case lists:member(X, ReservedParameterNames) of
+                    true ->
+                        throw({error, {invalid_header, {crit, illegal_parameter_name}}});
+                    false ->
+                        X
+                end;
+            (_) ->
+                throw({error, {invalid_header, {crit, invalid_format}}})
         end,
     Header#{crit => lists:map(F, Value)};
 parse_header_parameter_name(<<"crit">>, _Value, _Header) ->

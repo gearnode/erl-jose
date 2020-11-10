@@ -14,7 +14,8 @@
 
 -module(jose_jwa).
 
--export([supported_algorithms/0,
+-export([reserved_header_parameter_names/0,
+         supported_algorithms/0,
          support/1,
          generate_key/1,
          sign/3,
@@ -39,6 +40,13 @@
 
 -type sign_key() :: hmac_key() | ecdsa_private_key().
 -type verify_key() :: hmac_key() | ecdsa_public_key().
+
+-spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
+reserved_header_parameter_names() ->
+    [<<"epk">>, <<"apu">>, <<"apv">>, <<"iv">>, <<"tag">>,
+     <<"p2c">>, <<"p2c">>, <<"enc">>, <<"kty">>, <<"crv">>,
+     <<"x">>, <<"y">>, <<"d">>, <<"e">>, <<"d">>, <<"p">>,
+     <<"q">>, <<"dp">>, <<"dq">>, <<"qi">>, <<"oth">>, <<"k">>].
 
 -spec supported_algorithms() -> [alg()].
 supported_algorithms() ->
