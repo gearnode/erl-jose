@@ -136,6 +136,8 @@ parse_header_parameter_name(<<"x5u">>, Value, Header) when is_binary(Value)->
     end;
 parse_header_parameter_name(<<"x5u">>, _Value, _Header) ->
     throw({error, {invalid_header, {x5u, invalid_format}}});
+parse_header_parameter_name(<<"x5c">>, [], _Header) ->
+    throw({error, {invalid_header, {x5c, invalid_format}}});
 parse_header_parameter_name(<<"x5c">>, Value, Header) when is_list(Value) ->
     Chain = parse_x5c_header_parameter_name(Value, []),
     Header#{x5c => Chain};
