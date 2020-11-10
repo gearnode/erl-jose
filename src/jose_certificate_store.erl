@@ -57,11 +57,13 @@ trusted(Certificate) ->
 handle_call({add, Certificate}, _From, Tab) ->
     Fingerprint = certificate_fingerprint(Certificate),
     true = ets:insert(Tab, {Fingerprint}),
+    ?LOG_INFO("add certificate ~p in the trusted certificate store", [Fingerprint]),
     {reply, ok, Tab};
 
 handle_call({remove, Certificate}, _From, Tab) ->
     Fingerprint = certificate_fingerprint(Certificate),
     true = ets:delete(Tab, Fingerprint),
+    ?LOG_INFO("remove certificate ~p in the trusted certificate store", [Fingerprint]),
     {reply, ok, Tab};
 
 handle_call({trusted, Certificate}, _From, Tab) ->
