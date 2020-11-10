@@ -14,7 +14,7 @@
 
 -module(jose_base64).
 
--export([encodeurl/1, decodeurl/1, decode/1]).
+-export([encodeurl/1, encode/1, decodeurl/1, decode/1]).
 
 -spec decodeurl(binary()) -> {ok, binary()} | {error, term()}.
 decodeurl(Bin) ->
@@ -111,6 +111,32 @@ dec64($/) ->
     63;
 dec64(Char) ->
     error({invalid_base64_char, Char}).
+
+-spec encode(binary()) -> binary().
+encode(Bin) ->
+    encode(Bin, <<>>).
+
+-spec encode(binary(), binary()) -> binary().
+encode(<<>>, Acc) ->
+    Acc;
+encode(<<A:6, B:6, C:6, D:6, Rest/binary>>, Acc) ->
+    encode(Rest, <<Acc/binary, (enc64(A)), (enc64(B)), (enc64(C)), (enc64(D))>>);
+encode(<<A:6, B:2>>, Acc) ->
+    <<Acc/binary, (enc64(A)), (enc64(B bsl 4))>>;
+encode(<<A:6, B:6, C:4>>, Acc) ->
+    <<Acc/binary, (enc64(A)), (enc64(B)), (enc64(C bsl 2))>>.
+
+-spec enc64(0..63) -> byte().
+enc64(Char) when Char =< 25 ->
+    Char + $A;
+enc64(Char) when Char =< 51 ->
+    Char + $a - 26;
+enc64(Char) when Char =< 61 ->
+    Char + $0 - 52;
+enc64(62) ->
+    $+;
+enc64(63) ->
+    $/.
 
 -spec encodeurl(binary()) -> binary().
 encodeurl(Bin) ->
