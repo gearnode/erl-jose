@@ -18,41 +18,54 @@
 
 -behaviour(gen_server).
 
--export([start_link/0,
+-export([start_link/2,
          init/1,
          terminate/2,
          handle_call/3,
          handle_cast/2,
          handle_info/2]).
 
--export([add/1,
-         remove/1,
-         trusted/1]).
+-export([add/2,
+         remove/2,
+         is_trusted/2]).
 
--spec start_link() -> Result when
+-type gen_server_name() :: {local, term()}
+                         | {global, term()}
+                         | {via, atom(), term()}.
+
+-type options() :: map().
+
+-type gen_server_ref() :: term()
+                        | {term(), atom()}
+                        | {global, term()}
+                        | {via, atom(), term()}
+                        | pid().
+
+-spec start_link(gen_server_name(), options()) -> Result when
       Result :: {ok, pid()} | ignore | {error, term()}.
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+start_link(Name, Options) ->
+    gen_server:start_link(Name, ?MODULE, [Options], []).
 
-init([]) ->
+init([Options]) ->
     State = ets:new(certificate, []),
+    % TODO: populate the state with options
     {ok, State}.
 
 terminate(_Reason, Tab) ->
     ets:delete(Tab),
     ok.
 
--spec add(jose:certificate()) -> ok.
-add(Certificate) ->
-    gen_server:call(?MODULE, {add, Certificate}).
+-spec add(gen_server_ref(), jose:certificate()) -> ok.
+add(Ref, Certificate) ->
+    gen_server:call(Ref, {add, Certificate}).
 
--spec remove(jose:certificate()) -> ok.
-remove(Certificate) ->
-    gen_server:call(?MODULE, {remove, Certificate}).
+-spec remove(gen_server_ref(), jose:certificate()) -> ok.
+remove(Ref, Certificate) ->
+    gen_server:call(Ref, {remove, Certificate}).
 
--spec trusted(jose:certificate()) -> boolean().
-trusted(Certificate) ->
-    gen_server:call(?MODULE, {trusted, Certificate}).
+-spec is_trusted(gen_server_ref(), jose:certificate()) -> boolean().
+is_trusted(Ref, Certificate) ->
+    gen_server:call(Ref, {is_trusted, Certificate}).
 
 handle_call({add, Certificate}, _From, Tab) ->
     Fingerprint = certificate_fingerprint(Certificate),
@@ -66,7 +79,7 @@ handle_call({remove, Certificate}, _From, Tab) ->
     ?LOG_INFO("remove certificate ~p in the trusted certificate store", [Fingerprint]),
     {reply, ok, Tab};
 
-handle_call({trusted, Certificate}, _From, Tab) ->
+handle_call({is_trusted, Certificate}, _From, Tab) ->
     Fingerprint = certificate_fingerprint(Certificate),
     Result = ets:member(Tab, Fingerprint),
     {reply, Result, Tab};

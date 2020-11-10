@@ -29,5 +29,6 @@ init([]) ->
 
 -spec certificate_store_spec() -> supervisor:child_spec().
 certificate_store_spec() ->
+    Options = application:get_env(jose, certificate_store, #{}),
     #{id => certificate_store,
-      start => {jose_certificate_store, start_link, []}}.
+      start => {jose_certificate_store, start_link, [{local, jose_certificate_store}, Options]}}.
