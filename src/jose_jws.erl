@@ -201,7 +201,7 @@ parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->
     case jose_base64:decode(H) of
         {ok, Data} ->
             Cert = try
-                       public_key:pkix_decode_cert(Data, plain)
+                       public_key:pkix_decode_cert(Data, otp)
                    catch
                        error:Reason ->
                            throw({error, {invalid_header, {x5c, Reason}}})
