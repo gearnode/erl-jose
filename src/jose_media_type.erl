@@ -50,7 +50,8 @@ parse(Bin) ->
     try
         {Type, SubType} = parse_type(Type0),
         Parameters = parse_parameters(Parameters0),
-        #{type => Type, subtype => SubType, parameters => Parameters}
+        MediaType = #{type => Type, subtype => SubType, parameters => Parameters},
+        {ok, MediaType}
     catch
         throw:{error, Reason} ->
             {error, Reason}
