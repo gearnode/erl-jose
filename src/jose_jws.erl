@@ -33,8 +33,8 @@
                     x5c => [jose:certificate()],
                     x5t => jose:certificate_thumbprint(),
                     'x5t#S256' => jose:certificate_thumbprint(),
-                    typ => typ(),
-                    cty => cty(),
+                    typ => jose_media_type:media_type(),
+                    cty => jose_media_type:media_type(),
                     b64 => boolean(),
                     crit => [jose:header_parameter_name()]}.
 
@@ -86,7 +86,7 @@ serialize_header(Header) ->
     Data = json:serialize(Object, #{return_binary => true}),
     jose_base64:encodeurl(Data).
 
--spec serialize_header_parameter_name(atom() | binary(), term(), map()) -> #{json:key() => json:value()}.
+-spec serialize_header_parameter_name(json:key(), term(), map()) -> #{json:key() => json:value()}.
 serialize_header_parameter_name(alg, Alg, Header) ->
     Value = atom_to_binary(Alg),
     Value2 = string:uppercase(Value),
@@ -95,6 +95,7 @@ serialize_header_parameter_name(jku, URI, Header) ->
     Value = uri:serialize(URI),
     Header#{<<"jku">> => Value};
 serialize_header_parameter_name(jwk, JWK, Header) ->
+    % TODO: serialize JWK with jose_jwk:serialize(...)
     Header#{<<"jwk">> => JWK};
 serialize_header_parameter_name(kid, KId, Header) ->
     Header#{<<"kid">> => KId};
@@ -111,10 +112,12 @@ serialize_header_parameter_name(x5t, Fingerprint, Header) ->
 serialize_header_parameter_name('x5t#S256', Fingerprint, Header) ->
     Value = jose_base64:encodeurl(Fingerprint),
     Header#{<<"x5t#S256">> => Value};
-serialize_header_parameter_name(typ, Value, Header) ->
-    Header#{<<"typ">> => typ};
-serialize_header_parameter_name(cty, Value, Header) ->
-    Header#{<<"cty">> => cty};
+serialize_header_parameter_name(typ, MediaType, Header) ->
+    Value = jose_media_type:serialize(MediaType),
+    Header#{<<"typ">> => Value};
+serialize_header_parameter_name(cty, MediaType, Header) ->
+    Value = jose_media_type:serialize(MediaType),
+    Header#{<<"cty">> => Value};
 serialize_header_parameter_name(crit, Value, Header) ->
     Header#{<<"crit">> => Value};
 serialize_header_parameter_name(Key, Value, Header) ->
@@ -202,11 +205,21 @@ parse_header_parameter_name(<<"x5t#S256">>, Value, Header) ->
 parse_header_parameter_name(<<"x5t#S256">>, _Value, _Header) ->
     throw({error, {invalid_header, {'x5t#S256', invalid_format}}});
 parse_header_parameter_name(<<"typ">>, Value, Header) when is_binary(Value) ->
-    Header#{typ => Value};
+    case jose_media_type:parse(Value) of
+        {ok, MediaType} ->
+            Header#{typ => MediaType};
+        {error, Reason} ->
+            throw({error, {invalid_header, {typ, Reason}}})
+    end;
 parse_header_parameter_name(<<"typ">>, _Value, _Header) ->
     throw({error, {invalid_header, {typ, invalid_format}}});
 parse_header_parameter_name(<<"cty">>, Value, Header) when is_binary(Value) ->
-    Header#{cty => Value};
+    case jose_media_type:parse(Value) of
+        {ok, MediaType} ->
+            Header#{cty => MediaType};
+        {error, Reason} ->
+            throw({error, {invalid_header, {cty, Reason}}})
+    end;
 parse_header_parameter_name(<<"cty">>, _Value, _Header) ->
     throw({error, {invalid_header, {cty, invalid_format}}});
 parse_header_parameter_name(<<"crit">>, [], _Header) ->
