@@ -106,9 +106,11 @@ serialize_header_parameter_name(x5c, CertChain, Header) ->
     Value = lists:map(F, CertChain),
     Header#{<<"x5c">> => Value};
 serialize_header_parameter_name(x5t, Fingerprint, Header) ->
-    Header#{<<"x5t">> => Fingerprint};
+    Value = jose_base64:encodeurl(Fingerprint),
+    Header#{<<"x5t">> => Value};
 serialize_header_parameter_name('x5t#S256', Fingerprint, Header) ->
-    Header#{<<"x5t#S256">> => Fingerprint};
+    Value = jose_base64:encodeurl(Fingerprint),
+    Header#{<<"x5t#S256">> => Value};
 serialize_header_parameter_name(typ, Value, Header) ->
     Header#{<<"typ">> => typ};
 serialize_header_parameter_name(cty, Value, Header) ->
