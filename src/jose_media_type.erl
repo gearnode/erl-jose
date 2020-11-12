@@ -52,6 +52,7 @@ parse(Bin) ->
         Parameters = parse_parameters(Parameters0),
         MediaType = #{type => Type, subtype => SubType, parameters => Parameters},
         {ok, MediaType}
+
     catch
         throw:{error, Reason} ->
             {error, Reason}
@@ -107,7 +108,7 @@ parse_parameter_value(Bin) ->
                         [P1, P2] -> {P1, P2};
                         [P1] -> {P1, <<>>}
                     end,
-    Value = string:trim(Value0),
+    Value = string:trim(Value0, trailing),
     validate_naming(Value),
     {Value, Rest}.
 
