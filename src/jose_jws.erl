@@ -88,9 +88,7 @@ serialize_header(Header) ->
 
 -spec serialize_header_parameter_name(json:key(), term(), map()) -> #{json:key() => json:value()}.
 serialize_header_parameter_name(alg, Alg, Header) ->
-    Value = atom_to_binary(Alg),
-    Value2 = string:uppercase(Value),
-    Header#{<<"alg">> => Value2};
+    Header#{<<"alg">> => jose_jwa:encode_alg(Alg)};
 serialize_header_parameter_name(jku, URI, Header) ->
     Value = uri:serialize(URI),
     Header#{<<"jku">> => Value};
@@ -154,12 +152,9 @@ parse_header_parameter_names(Header) ->
 -spec parse_header_parameter_name(json:key(), json:value(), header()) ->
           #{json:key() => term()}.
 parse_header_parameter_name(<<"alg">>, Value, Header) when is_binary(Value)->
-    Alg = string:lowercase(Value),
-    case jose_jwa:support(Alg) of
-        true ->
-            Header#{alg => binary_to_atom(Alg)};
-        false ->
-            throw({error, {invalid_header, {alg, unsupported_alg}}})
+    case jose_jwa:decode_alg(Value) of
+        {ok, Alg} -> Header#{alg => Alg};
+        {error, Reason} -> throw({error, {invalid_header, {alg, Reason}}})
     end;
 parse_header_parameter_name(<<"alg">>, _Value, _Header) ->
     throw({error, {invalid_header, {alg, invalid_format}}});

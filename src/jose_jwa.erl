@@ -17,6 +17,8 @@
 -export([reserved_header_parameter_names/0,
          supported_algorithms/0,
          support/1,
+         encode_alg/1,
+         decode_alg/1,
          generate_key/1,
          sign/3,
          verify/4]).
@@ -68,6 +70,54 @@ support(Alg) when is_atom(Alg) ->
     lists:member(Alg, supported_algorithms());
 support(Alg) ->
     lists:member(Alg, lists:map(fun atom_to_binary/1, supported_algorithms())).
+
+-spec encode_alg(alg()) -> binary().
+encode_alg(none) ->
+    <<"none">>;
+encode_alg(hs256) ->
+    <<"HS256">>;
+encode_alg(hs384) ->
+    <<"HS384">>;
+encode_alg(hs512) ->
+    <<"HS512">>;
+encode_alg(es256) ->
+    <<"ES256">>;
+encode_alg(es384) ->
+    <<"ES384">>;
+encode_alg(es512) ->
+    <<"ES512">>;
+encode_alg(rs256) ->
+    <<"RS256">>;
+encode_alg(rs384) ->
+    <<"RS384">>;
+encode_alg(rs512) ->
+    <<"RS512">>;
+encode_alg(_Alg) ->
+    error(unsupported_alg).
+
+-spec decode_alg(binary()) -> {ok, alg()} | {error, unsupported_alg}.
+decode_alg(<<"none">>) ->
+    {ok, none};
+decode_alg(<<"HS256">>) ->
+    {ok, hs256};
+decode_alg(<<"HS384">>) ->
+    {ok, hs384};
+decode_alg(<<"HS512">>) ->
+    {ok, hs512};
+decode_alg(<<"ES256">>) ->
+    {ok, es256};
+decode_alg(<<"ES384">>) ->
+    {ok, es384};
+decode_alg(<<"ES512">>) ->
+    {ok, es512};
+decode_alg(<<"RS256">>) ->
+    {ok, rs256};
+decode_alg(<<"RS384">>) ->
+    {ok, rs384};
+decode_alg(<<"RS512">>) ->
+    {ok, rs512};
+decode_alg(_Alg) ->
+    {error, unsupported_alg}.
 
 -spec generate_key(alg()) -> hmac_key()
               | {ecdsa_public_key(), ecdsa_private_key()}
