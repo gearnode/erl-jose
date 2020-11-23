@@ -27,7 +27,7 @@
 
 -export([add/2,
          remove/2,
-         is_trusted/2]).
+         select/2]).
 
 -type gen_server_name() :: {local, term()}
                          | {global, term()}
@@ -47,42 +47,78 @@ start_link(Name, Options) ->
     gen_server:start_link(Name, ?MODULE, [Options], []).
 
 init([Options]) ->
-    State = ets:new(certificate, []),
-    % TODO: populate the state with options
-    {ok, State}.
+    Tab = ets:new(certificate, [set, private]),
+    Filesnames = maps:get(files, Options, []),
+    populate_db(Tab, Filesnames),
+    {ok, #{db => Tab}}.
 
-terminate(_Reason, Tab) ->
+-spec populate_db(ets:tid(), file:filename_all()) -> ok.
+populate_db(Tab, Filenames) ->
+    Files = read_cert_files(Filenames, []),
+    Certs = decode_cert_files(Files, []),
+    lists:foreach(fun (Der) -> insert(Tab, Der) end, Certs),
+    ok.
+
+-spec read_cert_files(file:filename_all(), [binary()]) -> [binary()].
+read_cert_files([], Acc) ->
+    Acc;
+read_cert_files([Filename | T], Acc) ->
+    case file:read_file(Filename) of
+        {ok, Content} -> read_cert_files(T, [Content | Acc]);
+        {error, Reason} -> erlang:error(Reason)
+    end.
+
+-spec decode_cert_files([binary()], [term()]) -> [term()].
+decode_cert_files([], Acc) ->
+    Acc;
+decode_cert_files([Content | T], Acc) ->
+    AppendFun = fun ({'Certificate', Der, not_encrypted}, A) -> [Der | A];
+                    (_, _) -> erlang:error(invalid_certificate_bundle)
+                end,
+    Acc2 = lists:foldl(AppendFun, Acc, public_key:pem_decode(Content)),
+    decode_cert_files(T, Acc2).
+
+-spec insert(ets:tid(), public_key:der_encoded()) -> no_return().
+insert(Tab, Der) ->
+    Cert = public_key:pkix_decode_cert(Der, otp),
+    Sha1 = crypto:hash(sha, Der),
+    Sha2 = crypto:hash(sha256, Der),
+    true = ets:insert(Tab, {Sha1, Cert}),
+    true = ets:insert(Tab, {Sha2, Cert}).
+
+terminate(_Reason, #{db := Tab}) ->
     ets:delete(Tab),
     ok.
 
--spec add(gen_server_ref(), jose:certificate()) -> ok.
-add(Ref, Certificate) ->
-    gen_server:call(Ref, {add, Certificate}).
+-spec add(gen_server_ref(), public_key:der_encoded()) -> ok.
+add(Ref, Der) ->
+    gen_server:call(Ref, {add, Der}).
 
--spec remove(gen_server_ref(), jose:certificate()) -> ok.
-remove(Ref, Certificate) ->
-    gen_server:call(Ref, {remove, Certificate}).
+-spec remove(gen_server_ref(), jose:certificate_thumbprint()) -> ok.
+remove(Ref, Der) ->
+    gen_server:call(Ref, {remove, Der}).
 
--spec is_trusted(gen_server_ref(), jose:certificate()) -> boolean().
-is_trusted(Ref, Certificate) ->
-    gen_server:call(Ref, {is_trusted, Certificate}).
+-spec select(gen_server_ref(), jose:certificate_thumbprint()) -> {ok, jose:certificate()} | {error, term()}.
+select(Ref, Thumbprint) ->
+    gen_server:call(Ref, {select, Thumbprint}).
 
-handle_call({add, Certificate}, _From, Tab) ->
-    Fingerprint = certificate_fingerprint(Certificate),
-    true = ets:insert(Tab, {Fingerprint}),
-    ?LOG_INFO("add certificate ~p in the trusted certificate store", [Fingerprint]),
-    {reply, ok, Tab};
+handle_call({add, Der}, _From, State = #{db := Tab}) ->
+    insert(Tab, Der),
+    {reply, ok, State};
 
-handle_call({remove, Certificate}, _From, Tab) ->
-    Fingerprint = certificate_fingerprint(Certificate),
-    true = ets:delete(Tab, Fingerprint),
-    ?LOG_INFO("remove certificate ~p in the trusted certificate store", [Fingerprint]),
-    {reply, ok, Tab};
+handle_call({remove, Der}, _From, State = #{db := Tab}) ->
+    Sha1 = crypto:hash(sha, Der),
+    Sha2 = crypto:hash(sha256, Der),
+    true = ets:delete(Tab, Sha1),
+    true = ets:delete(Tab, Sha2),
+    {reply, ok, State};
 
-handle_call({is_trusted, Certificate}, _From, Tab) ->
-    Fingerprint = certificate_fingerprint(Certificate),
-    Result = ets:member(Tab, Fingerprint),
-    {reply, Result, Tab};
+handle_call({select, Thumbprint}, _From, State = #{db := Tab}) ->
+    Response = case ets:lookup(Tab, Thumbprint) of
+                   [{_Id, Cert}] -> {ok, Cert};
+                   _Else -> {error, not_found}
+               end,
+    {reply, Response, State};
 
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
@@ -95,8 +131,3 @@ handle_cast(Msg, State) ->
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
-
-certificate_fingerprint(Certificate) ->
-    Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
-    Hash = crypto:hash(sha256, Der),
-    lists:flatten(string:join([io_lib:format("~2.16.0b",[C1]) || <<C1>> <= Hash], ":")).
