@@ -24,22 +24,30 @@
 -export_type([alg/0,
               hmac/0,
               ecdsa/0,
+              rsa/0,
               hmac_key/0,
               ecdsa_public_key/0,
               ecdsa_private_key/0,
+              rsa_public_key/0,
+              rsa_private_key/0,
               sign_key/0,
               verify_key/0]).
 
--type alg() :: hmac() | ecdsa() | none.
+-type alg() :: hmac() | ecdsa() | rsa() | none.
 -type hmac() :: hs256 | hs384 | hs512.
 -type ecdsa() :: es256 | es384 | es512.
+-type rsa() :: rs256 | rs384 | rs512.
+
+-type key_integer() :: integer() | binary().
 
 -type hmac_key() :: binary().
--type ecdsa_public_key() :: binary().
--type ecdsa_private_key() :: binary().
+-type ecdsa_public_key() :: key_integer().
+-type ecdsa_private_key() :: key_integer().
+-type rsa_public_key() :: [key_integer()].
+-type rsa_private_key() :: [key_integer()].
 
--type sign_key() :: hmac_key() | ecdsa_private_key().
--type verify_key() :: hmac_key() | ecdsa_public_key().
+-type sign_key() :: hmac_key() | ecdsa_private_key() | rsa_public_key().
+-type verify_key() :: hmac_key() | ecdsa_public_key() | rsa_private_key().
 
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
 reserved_header_parameter_names() ->
@@ -52,6 +60,7 @@ reserved_header_parameter_names() ->
 supported_algorithms() ->
     [hs256, hs384, hs512,
      es256, es384, es512,
+     rs256, rs384, rs512,
      none].
 
 -spec support(alg() | binary()) -> boolean().
@@ -60,7 +69,9 @@ support(Alg) when is_atom(Alg) ->
 support(Alg) ->
     lists:member(Alg, lists:map(fun atom_to_binary/1, supported_algorithms())).
 
--spec generate_key(alg()) -> hmac_key() | {ecdsa_public_key(), ecdsa_private_key()}.
+-spec generate_key(alg()) -> hmac_key()
+              | {ecdsa_public_key(), ecdsa_private_key()}
+              | {rsa_public_key(), rsa_private_key()}.
 generate_key(none) ->
     <<>>;
 generate_key(hs256) ->
@@ -75,11 +86,17 @@ generate_key(es384) ->
     crypto:generate_key(ecdh, secp384r1);
 generate_key(es512) ->
     crypto:generate_key(ecdh, secp521r1);
+generate_key(rs256) ->
+    crypto:generate_key(rsa, {4096, 65537});
+generate_key(rs384) ->
+    crypto:generate_key(rsa, {4096, 65537});
+generate_key(rs512) ->
+    crypto:generate_key(rsa, {4096, 65537});
 generate_key(_) ->
     error(unsupported_alg).
 
 -spec sign(binary(), alg(), Key) -> binary() when
-      Key :: hmac_key() | ecdsa_private_key().
+      Key :: hmac_key() | ecdsa_private_key() | rsa_private_key().
 sign(_Value, none, <<>>) ->
     <<>>;
 sign(Value, hs256, Key) ->
@@ -97,6 +114,12 @@ sign(Value, es384, Key) ->
 sign(Value, es512, Key) ->
     Signature = crypto:sign(ecdsa, sha512, Value, [Key, secp521r1]),
     decode_ecdsa_sign(Signature, 528);
+sign(Value, rs256, Key) ->
+    crypto:sign(rsa, sha256, Value, Key);
+sign(Value, rs384, Key) ->
+    crypto:sign(rsa, sha384, Value, Key);
+sign(Value, rs512, Key) ->
+    crypto:sign(rsa, sha512, Value, Key);
 sign(_, _, _) ->
     error(unsupported_alg).
 
@@ -106,7 +129,7 @@ decode_ecdsa_sign(Key, Size) ->
     <<R:Size, S:Size>>.
 
 -spec verify(binary(), binary(), alg(), Key) -> boolean() when
-      Key :: hmac_key() | ecdsa_public_key().
+      Key :: hmac_key() | ecdsa_public_key() | rsa_public_key().
 verify(_Value, Signature, none, <<>>) ->
     Signature =:= <<>>;
 verify(Value, Signature, hs256, Key) ->
@@ -124,6 +147,12 @@ verify(Value, Signature, es384, Key) ->
 verify(Value, Signature, es512, Key) ->
     Der = encode_ecdsa_sign(Signature, 528),
     crypto:verify(ecdsa, sha512, Value, Der, [Key, secp521r1]);
+verify(Value, Signature, rs256, Key) ->
+    crypto:verify(rsa, sha256, Value, Signature, Key);
+verify(Value, Signature, rs384, Key) ->
+    crypto:verify(rsa, sha384, Value, Signature, Key);
+verify(Value, Signature, rs512, Key) ->
+    crypto:verify(rsa, sha512, Value, Signature, Key);
 verify(_, _, _, _) ->
     error(unsupported_alg).
 

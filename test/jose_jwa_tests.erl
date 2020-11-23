@@ -12,7 +12,7 @@
 %% OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 %% PERFORMANCE OF THIS SOFTWARE.
 
--module(jose_jwa_test).
+-module(jose_jwa_tests).
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -21,9 +21,12 @@ jwa_test_() ->
       {with, hs256, [fun sign_and_verify_hmac/1]},
       {with, hs384, [fun sign_and_verify_hmac/1]},
       {with, hs512, [fun sign_and_verify_hmac/1]},
-      {with, es256, [fun sign_and_verify_ecdsa/1]},
-      {with, es384, [fun sign_and_verify_ecdsa/1]},
-      {with, es512, [fun sign_and_verify_ecdsa/1]}].
+      {with, es256, [fun sign_and_verify_asymmetric/1]},
+      {with, es384, [fun sign_and_verify_asymmetric/1]},
+      {with, es512, [fun sign_and_verify_asymmetric/1]},
+      {with, rs256, [fun sign_and_verify_asymmetric/1]},
+      {with, rs384, [fun sign_and_verify_asymmetric/1]},
+      {with, rs512, [fun sign_and_verify_asymmetric/1]}].
 
 sign_and_verify_none() ->
     Key = jose_jwa:generate_key(none),
@@ -47,17 +50,15 @@ sign_and_verify_hmac(Alg) ->
     Msg2 = <<"other message">>,
     ?assertNot(jose_jwa:verify(Msg2, Signature, Alg, Key)).
 
-sign_and_verify_ecdsa(Alg) ->
+sign_and_verify_asymmetric(Alg) ->
     {Pub, Priv} = jose_jwa:generate_key(Alg),
     Msg = <<"hello world">>,
     Signature = jose_jwa:sign(Msg, Alg, Priv),
     ?assertNotEqual(<<>>, Signature),
     ?assert(jose_jwa:verify(Msg, Signature, Alg, Pub)),
-    ?assertNot(jose_jwa:verify(Msg, Signature, Alg, Priv)),
     {Pub2, Priv2} = jose_jwa:generate_key(Alg),
-    ?assertNot(jose_jwa:verify(Msg, Signature, Alg, Priv2)),
+    ?assertNot(jose_jwa:verify(Msg, Signature, Alg, Pub2)),
     Msg2 = <<"other message">>,
-    ?assertNot(jose_jwa:verify(Msg2, Signature, Alg, Priv)),
     Signature2 = jose_jwa:sign(Msg2, Alg, Priv2),
     ?assertNotEqual(<<>>, Signature2),
     ?assert(jose_jwa:verify(Msg2, Signature2, Alg, Pub2)).
