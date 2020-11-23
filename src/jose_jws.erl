@@ -63,24 +63,7 @@ encode_compact(Header, Payload, Alg, Key) ->
     Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key)),
     <<Message/binary, $., Signature/binary>>.
 
--spec decode_compact(compact(), jose_jwa:alg(), jose_jwa:verify_key()) ->
-          {ok, payload()} | {error, decode_error_reason()}.
-decode_compact(Token, Alg, Key) ->
-    try
-        case binary:split(Token, <<$.>>, [global]) of
-            [EncHeader, EncPayload, EncSig] ->
-                Header = decode_header(EncHeader),
-                Payload = decode_payload(EncPayload, maps:get(b64, Header, true)),
-                Signature = decode_signature(EncSig);
-            _ ->
-                {error, invalid_format}
-        end
-    catch
-        throw:{error, Reason} ->
-            {error, Reason}
-    end.
-
--spec serialize_header(header()) -> map().
+-spec serialize_header(header()) -> binary().
 serialize_header(Header) ->
     Object = maps:fold(fun serialize_header_parameter_name/3, #{}, Header),
     Data = json:serialize(Object, #{return_binary => true}),
@@ -122,10 +105,35 @@ serialize_header_parameter_name(Key, Value, Header) ->
     Header#{Key => Value}.
 
 -spec serialize_payload(header(), payload()) -> binary().
-serialize_payload(#{b64 := false} = Header, Payload) ->
+serialize_payload(#{b64 := false} = _Header, Payload) ->
     Payload;
 serialize_payload(_Header, Payload) ->
     jose_base64:encodeurl(Payload).
+
+-spec decode_compact(compact(), jose_jwa:alg(), jose_jwa:verify_key()) ->
+          {ok, header(), payload()} | {error, decode_error_reason()}.
+decode_compact(Token, _Alg, _Key) ->
+    try
+        {P1, P2, P3} = parse_parts(Token),
+        DecodedHeader = decode_header(P1),
+        Header = parse_header_object(DecodedHeader),
+        Payload = decode_payload(Header, P2),
+        _Signature = decode_signature(P3),
+        % TODO: validate the signature
+        {ok, Header, Payload}
+    catch
+        throw:{error, Reason} ->
+            {error, Reason}
+    end.
+
+-spec parse_parts(compact()) -> {binary(), binary(), binary()}.
+parse_parts(Bin) ->
+    case binary:split(Bin, <<$.>>, [global]) of
+        [Header, Payload, Signature] ->
+            {Header, Payload, Signature};
+        _ ->
+            throw({error, invalid_format})
+    end.
 
 -spec decode_header(binary()) -> binary().
 decode_header(Data) ->
@@ -269,15 +277,23 @@ parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->
 parse_x5c_header_parameter_name(_Value, _Acc) ->
     throw({error, {invalid_header, {x5c, invalid_format}}}).
 
--spec decode_payload(binary(), boolean()) -> binary().
-decode_payload(Data, false) ->
-    Data;
-decode_payload(Data, true) ->
-    case jose_base64:decodeurl(Data) of
-        {ok, Payload} ->
-            Payload;
-        {error, Reason} ->
-            throw({error, {invalid_payload, Reason}})
+-spec decode_payload(header(), binary()) -> binary().
+decode_payload(#{b64 := false} = Header, Data) ->
+    Crit = maps:get(crit, Header, []),
+    case lists:member(<<"b64">>, Crit) of
+        true -> Data;
+        false -> throw({error, {invalid_payload, malformatted_payload}})
+    end;
+decode_payload(Header, Data) ->
+    Crit = maps:get(crit, Header, []),
+    case lists:member(<<"b64">>, Crit) of
+        true ->
+            throw({error, {invalid_payload, malformatted_payload}});
+        false ->
+            case jose_base64:decodeurl(Data) of
+                {ok, Payload} -> Payload;
+                {error, Reason} -> throw({error, {invalid_payload, Reason}})
+            end
     end.
 
 -spec decode_signature(binary()) -> binary().
