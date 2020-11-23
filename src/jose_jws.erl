@@ -58,7 +58,7 @@ reserved_header_parameter_names() ->
           compact().
 encode_compact(Header, Payload, Alg, Key) ->
     EncodedHeader = serialize_header(Header),
-    EncodedPayload = jose_base64:encodeurl(Payload),
+    EncodedPayload = serialize_payload(Header, Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
     Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key)),
     <<Message/binary, $., Signature/binary>>.
@@ -122,6 +122,12 @@ serialize_header_parameter_name(crit, Value, Header) ->
     Header#{<<"crit">> => Value};
 serialize_header_parameter_name(Key, Value, Header) ->
     Header#{Key => Value}.
+
+-spec serialize_payload(header(), payload()) -> binary().
+serialize_payload(#{b64 := false} = Header, Payload) ->
+    Payload;
+serialize_payload(_Header, Payload) ->
+    jose_base64:encodeurl(Payload).
 
 -spec decode_header(binary()) -> binary().
 decode_header(Data) ->
