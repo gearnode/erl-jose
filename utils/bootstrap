@@ -1,13 +1,13 @@
 #!/bin/sh
 
-mkdir -p data/pki/ data/pki/private
+mkdir -p priv/pki/ priv/pki/private
 
 openssl req \
         -x509 \
         -newkey rsa:4096 \
         -nodes \
-        -keyout data/pki/private/acme.key \
-        -out data/pki/acme.crt \
+        -keyout priv/pki/private/acme.key \
+        -out priv/pki/acme.crt \
         -days 365 \
         -subj /CN=acme/O=test/C=FR/emailAddress=acme@example.com \
         -addext "subjectAltName = DNS:example.com,DNS:acme.example.com,email:acme@example.com" \
