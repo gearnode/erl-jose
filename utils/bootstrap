@@ -1,0 +1,15 @@
+#!/bin/sh
+
+mkdir -p data/pki/ data/pki/private
+
+openssl req \
+        -x509 \
+        -newkey rsa:4096 \
+        -nodes \
+        -keyout data/pki/private/acme.key \
+        -out data/pki/acme.crt \
+        -days 365 \
+        -subj /CN=acme/O=test/C=FR/emailAddress=acme@example.com \
+        -addext "subjectAltName = DNS:example.com,DNS:acme.example.com,email:acme@example.com" \
+        -addext keyUsage=digitalSignature \
+        -addext extendedKeyUsage=serverAuth
