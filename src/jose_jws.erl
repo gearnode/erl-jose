@@ -196,7 +196,7 @@ parse_header_parameter_name(<<"x5t">>, Value, Header) when is_binary(Value) ->
     end;
 parse_header_parameter_name(<<"x5t">>, _Value, _Header) ->
     throw({error, {invalid_header, {x5t, invalid_format}}});
-parse_header_parameter_name(<<"x5t#S256">>, Value, Header) ->
+parse_header_parameter_name(<<"x5t#S256">>, Value, Header) when is_binary(Value) ->
     case jose_base64:decodeurl(Value) of
         {ok, Thumbprint} ->
             Header#{'x5t#S256' => Thumbprint};
