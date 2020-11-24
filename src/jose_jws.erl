@@ -60,14 +60,14 @@ encode_compact(Header, Payload, Alg, Key) ->
     EncodedHeader = serialize_header(Header),
     EncodedPayload = serialize_payload(Header, Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
-    Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key)),
+    Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key), #{padding => false}),
     <<Message/binary, $., Signature/binary>>.
 
 -spec serialize_header(header()) -> binary().
 serialize_header(Header) ->
     Object = maps:fold(fun serialize_header_parameter_name/3, #{}, Header),
     Data = json:serialize(Object, #{return_binary => true}),
-    jose_base64:encodeurl(Data).
+    jose_base64:encodeurl(Data, #{padding => false}).
 
 -spec serialize_header_parameter_name(json:key(), term(), map()) -> #{json:key() => json:value()}.
 serialize_header_parameter_name(alg, Alg, Header) ->
@@ -108,7 +108,7 @@ serialize_header_parameter_name(Key, Value, Header) ->
 serialize_payload(#{b64 := false} = _Header, Payload) ->
     Payload;
 serialize_payload(_Header, Payload) ->
-    jose_base64:encodeurl(Payload).
+    jose_base64:encodeurl(Payload, #{padding => false}).
 
 -spec decode_compact(compact(), jose_jwa:alg(), jose_jwa:verify_key()) ->
           {ok, header(), payload()} | {error, decode_error_reason()}.
@@ -137,7 +137,7 @@ parse_parts(Bin) ->
 
 -spec decode_header(binary()) -> binary().
 decode_header(Data) ->
-    case jose_base64:decodeurl(Data) of
+    case jose_base64:decodeurl(Data, #{padding => false}) of
         {ok, Data2} ->
             Data2;
         {error, Reason} ->
@@ -290,7 +290,7 @@ decode_payload(Header, Data) ->
         true ->
             throw({error, {invalid_payload, malformatted_payload}});
         false ->
-            case jose_base64:decodeurl(Data) of
+            case jose_base64:decodeurl(Data, #{padding => false}) of
                 {ok, Payload} -> Payload;
                 {error, Reason} -> throw({error, {invalid_payload, Reason}})
             end
@@ -298,7 +298,7 @@ decode_payload(Header, Data) ->
 
 -spec decode_signature(binary()) -> binary().
 decode_signature(Data) ->
-    case jose_base64:decodeurl(Data) of
+    case jose_base64:decodeurl(Data, #{padding => false}) of
         {ok, Signature} ->
             Signature;
         {error, Reason} ->
