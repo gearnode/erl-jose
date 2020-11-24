@@ -72,6 +72,8 @@ serialize_header(Header) ->
 -spec serialize_header_parameter_name(json:key(), term(), map()) -> #{json:key() => json:value()}.
 serialize_header_parameter_name(alg, Alg, Header) ->
     Header#{<<"alg">> => jose_jwa:encode_alg(Alg)};
+serialize_header_parameter_name(jku, URI, Header) when is_binary(Value) ->
+    Header#{<<"jku">> => Value};
 serialize_header_parameter_name(jku, URI, Header) ->
     Value = uri:serialize(URI),
     Header#{<<"jku">> => Value};
@@ -80,10 +82,13 @@ serialize_header_parameter_name(jwk, JWK, Header) ->
     Header#{<<"jwk">> => JWK};
 serialize_header_parameter_name(kid, KId, Header) ->
     Header#{<<"kid">> => KId};
+serialize_header_parameter_name(x5u, Value, Header) when is_binary(Value) ->
+    Header#{<<"x5u">> => Value};
 serialize_header_parameter_name(x5u, URI, Header) ->
     Value = uri:serialize(URI),
     Header#{<<"x5u">> => Value};
 serialize_header_parameter_name(x5c, CertChain, Header) ->
+    %TODO: allow list of PEM
     F = fun (X) -> jose_base64:encode(public_key:pkix_encode('OTPCertificate', X, otp)) end,
     Value = lists:map(F, CertChain),
     Header#{<<"x5c">> => Value};
@@ -93,9 +98,13 @@ serialize_header_parameter_name(x5t, Fingerprint, Header) ->
 serialize_header_parameter_name('x5t#S256', Fingerprint, Header) ->
     Value = jose_base64:encodeurl(Fingerprint),
     Header#{<<"x5t#S256">> => Value};
+serialize_header_parameter_name(typ, Value, Header) when is_binary(Value) ->
+    Header#{<<"typ">> => Value};
 serialize_header_parameter_name(typ, MediaType, Header) ->
     Value = jose_media_type:serialize(MediaType),
     Header#{<<"typ">> => Value};
+serialize_header_parameter_name(cty, Value, Header) when is_binary(Value) ->
+    Header#{<<"cty">> => Value};
 serialize_header_parameter_name(cty, MediaType, Header) ->
     Value = jose_media_type:serialize(MediaType),
     Header#{<<"cty">> => Value};
