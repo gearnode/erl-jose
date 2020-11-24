@@ -20,7 +20,7 @@ dialyzer:
 build:
 	QUIET=1 rebar3 compile
 
-run:
+shell:
 	QUIET=1 rebar3 shell --config config/local.config
 
 test:
@@ -33,4 +33,4 @@ cover:
 clean:
 	$(RM) -r _build
 
-.PHONY: all dialyzer build run test cover clean
+.PHONY: all dialyzer build shell test cover clean
