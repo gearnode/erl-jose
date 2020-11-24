@@ -72,7 +72,7 @@ serialize_header(Header) ->
 -spec serialize_header_parameter_name(json:key(), term(), map()) -> #{json:key() => json:value()}.
 serialize_header_parameter_name(alg, Alg, Header) ->
     Header#{<<"alg">> => jose_jwa:encode_alg(Alg)};
-serialize_header_parameter_name(jku, URI, Header) when is_binary(Value) ->
+serialize_header_parameter_name(jku, Value, Header) when is_binary(Value) ->
     Header#{<<"jku">> => Value};
 serialize_header_parameter_name(jku, URI, Header) ->
     Value = uri:serialize(URI),
