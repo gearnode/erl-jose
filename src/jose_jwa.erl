@@ -65,11 +65,9 @@ supported_algorithms() ->
      rs256, rs384, rs512,
      none].
 
--spec support(alg() | binary()) -> boolean().
-support(Alg) when is_atom(Alg) ->
-    lists:member(Alg, supported_algorithms());
+-spec support(alg()) -> boolean().
 support(Alg) ->
-    lists:member(Alg, lists:map(fun atom_to_binary/1, supported_algorithms())).
+    lists:member(Alg, supported_algorithms()).
 
 -spec encode_alg(alg()) -> binary().
 encode_alg(none) ->
