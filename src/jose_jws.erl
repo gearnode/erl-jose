@@ -123,17 +123,20 @@ serialize_payload(#{b64 := false} = _Header, Payload) ->
 serialize_payload(_Header, Payload) ->
     jose_base64:encodeurl(Payload, #{padding => false}).
 
--spec decode_compact(compact(), jose_jwa:alg(), jose_jwa:verify_key()) ->
+-spec decode_compact(compact(), jose_jwa:alg(), [jose_jwa:verify_key()] | jose_jwa:verify_key()) ->
           {ok, header(), payload()} | {error, decode_error_reason()}.
-decode_compact(Token, Alg, Key) ->
+decode_compact(Token, Alg, Key) when not is_list(Key) ->
+    decode_compact(Token, Alg, [Key]);
+decode_compact(Token, Alg, Keys) ->
     try
         {P1, P2, P3} = parse_parts(Token),
         Header = decode_header(P1),
         Payload = decode_payload(Header, P2),
         Signature = decode_signature(P3),
         Message = <<P1/binary, $., P2/binary>>,
-        % TODO: collect key depending of the alg
-        case jose_jwa:verify(Message, Signature, Alg, Key) of
+
+        VerifySig = fun (Key) -> jose_jwa:verify(Message, Signature, Alg, Key) end,
+        case lists:any(VerifySig, Keys) of
             true -> {ok, Header, Payload};
             false -> {error, invalid_signature}
         end
