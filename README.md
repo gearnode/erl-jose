@@ -5,9 +5,6 @@ This repository contains [RFC 7515](https://tools.ietf.org/html/rfc7515),
 [7518](https://tools.ietf.org/html/rfc7518) and
 [7797](https://tools.ietf.org/html/rfc7797) implementation for Erlang.
 
-# State
-This project is a work in progress.
-
 # Documentation
 TODO
 
