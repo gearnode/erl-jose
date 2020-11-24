@@ -88,8 +88,12 @@ serialize_header_parameter_name(x5u, URI, Header) ->
     Value = uri:serialize(URI),
     Header#{<<"x5u">> => Value};
 serialize_header_parameter_name(x5c, CertChain, Header) ->
-    %TODO: allow list of PEM
-    F = fun (X) -> jose_base64:encode(public_key:pkix_encode('OTPCertificate', X, otp)) end,
+    F = fun
+            (X) when is_binary(X) ->
+                jose_base64:encode(X);
+            (X) ->
+                jose_base64:encode(public_key:pkix_encode('OTPCertificate', X, otp))
+        end,
     Value = lists:map(F, CertChain),
     Header#{<<"x5c">> => Value};
 serialize_header_parameter_name(x5t, Fingerprint, Header) ->
