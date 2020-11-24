@@ -125,15 +125,18 @@ serialize_payload(_Header, Payload) ->
 
 -spec decode_compact(compact(), jose_jwa:alg(), jose_jwa:verify_key()) ->
           {ok, header(), payload()} | {error, decode_error_reason()}.
-decode_compact(Token, _Alg, _Key) ->
+decode_compact(Token, Alg, Key) ->
     try
         {P1, P2, P3} = parse_parts(Token),
-        DecodedHeader = decode_header(P1),
-        Header = parse_header_object(DecodedHeader),
+        Header = decode_header(P1),
         Payload = decode_payload(Header, P2),
-        _Signature = decode_signature(P3),
-        % TODO: validate the signature
-        {ok, Header, Payload}
+        Signature = decode_signature(P3),
+        Message = <<P1/binary, $., P2/binary>>,
+        % TODO: collect key depending of the alg
+        case jose_jwa:verify(Message, Signature, Alg, Key) of
+            true -> {ok, Header, Payload};
+            false -> {error, invalid_signature}
+        end
     catch
         throw:{error, Reason} ->
             {error, Reason}
@@ -148,11 +151,11 @@ parse_parts(Bin) ->
             throw({error, invalid_format})
     end.
 
--spec decode_header(binary()) -> binary().
-decode_header(Data) ->
-    case jose_base64:decodeurl(Data, #{padding => false}) of
-        {ok, Data2} ->
-            Data2;
+-spec decode_header(binary()) -> header().
+decode_header(Data0) ->
+    case jose_base64:decodeurl(Data0, #{padding => false}) of
+        {ok, Data} ->
+            parse_header_object(Data);
         {error, Reason} ->
             throw({error, {invalid_header, Reason}})
     end.
