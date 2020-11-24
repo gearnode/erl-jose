@@ -1,6 +1,6 @@
 {application, jose,
  [{description, "An OTP library"},
-  {vsn, "0.1.0"},
+  {vsn, "git"},
   {registered, []},
   {mod, {jose_app, []}},
   {applications,
@@ -14,6 +14,6 @@
   {env,[]},
   {modules, []},
 
-  {licenses, ["Apache 2.0"]},
+  {licenses, ["MIT"]},
   {links, []}
  ]}.
