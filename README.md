@@ -11,6 +11,20 @@ This project is a work in progress.
 # Documentation
 TODO
 
+# Build
+You can build the library with:
+
+    make build
+
+# Test
+You can execute the test suite with:
+
+    make dialyzer test
+
+You can generate test coverage with:
+
+    make cover
+
 # License
 Released under the ISC license.
 
