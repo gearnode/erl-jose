@@ -42,11 +42,11 @@
 -type cty() :: binary().
 -type payload() :: binary().
 -type compact() :: binary().
--type decode_error_reason() :: term()
-                             | invalid_format
-                             | {invalid_header, term()}
-                             | {invalid_payload, term()}
-                             | {invalid_signature, term()}.
+-type decode_error_reason() :: invalid_format
+                             | {invalid_header, Key :: term(), Reason :: term()}
+                             | {invalid_header, Reason :: term()}
+                             | {invalid_payload, Reason :: term()}
+                             | {invalid_signature, Reason :: term()}.
 
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
 reserved_header_parameter_names() ->
@@ -162,77 +162,77 @@ parse_header_parameter_names(Header) ->
 parse_header_parameter_name(<<"alg">>, Value, Header) when is_binary(Value)->
     case jose_jwa:decode_alg(Value) of
         {ok, Alg} -> Header#{alg => Alg};
-        {error, Reason} -> throw({error, {invalid_header, {alg, Reason}}})
+        {error, Reason} -> throw({error, {invalid_header, alg, Reason}})
     end;
 parse_header_parameter_name(<<"alg">>, _Value, _Header) ->
-    throw({error, {invalid_header, {alg, invalid_format}}});
+    throw({error, {invalid_header, alg, invalid_format}});
 parse_header_parameter_name(<<"jku">>, Value, Header) when is_binary(Value) ->
     case uri:parse(Value) of
         {ok, URI} ->
             Header#{jku => URI};
         {error, Reason} ->
-            throw({error, {invalid_header, {jku, Reason}}})
+            throw({error, {invalid_header, jku, Reason}})
     end;
 parse_header_parameter_name(<<"jku">>, _Value, _Header) ->
-    throw({error, {invalid_header, {jku, invalid_format}}});
+    throw({error, {invalid_header, jku, invalid_format}});
 parse_header_parameter_name(<<"kid">>, Value, Header) when is_binary(Value) ->
     Header#{kid => Value};
 parse_header_parameter_name(<<"kid">>, _Valie, _Header) ->
-    throw({error, {invalid_header, {kid, invalid_format}}});
+    throw({error, {invalid_header, kid, invalid_format}});
 parse_header_parameter_name(<<"x5u">>, Value, Header) when is_binary(Value)->
     case uri:parse(Value) of
         {ok, URI} ->
             Header#{x5u => URI};
         {error, Reason} ->
-            throw({error, {invalid_header, {x5u, Reason}}})
+            throw({error, {invalid_header, x5u, Reason}})
     end;
 parse_header_parameter_name(<<"x5u">>, _Value, _Header) ->
-    throw({error, {invalid_header, {x5u, invalid_format}}});
+    throw({error, {invalid_header, x5u, invalid_format}});
 parse_header_parameter_name(<<"x5c">>, [], _Header) ->
-    throw({error, {invalid_header, {x5c, invalid_format}}});
+    throw({error, {invalid_header, x5c, invalid_format}});
 parse_header_parameter_name(<<"x5c">>, Value, Header) when is_list(Value) ->
     Chain = parse_x5c_header_parameter_name(Value, []),
     Header#{x5c => Chain};
 parse_header_parameter_name(<<"x5c">>, _Value, _Header) ->
-    throw({error, {invalid_header, {x5c, invalid_format}}});
+    throw({error, {invalid_header, x5c, invalid_format}});
 parse_header_parameter_name(<<"x5t">>, Value, Header) when is_binary(Value) ->
     case jose_base64:decodeurl(Value) of
         {ok, Thumbprint} ->
             Header#{x5t => Thumbprint};
         {error, Reason} ->
-            throw({error, {invalid_header, {x5t, Reason}}})
+            throw({error, {invalid_header, x5t, Reason}})
     end;
 parse_header_parameter_name(<<"x5t">>, _Value, _Header) ->
-    throw({error, {invalid_header, {x5t, invalid_format}}});
+    throw({error, {invalid_header, x5t, invalid_format}});
 parse_header_parameter_name(<<"x5t#S256">>, Value, Header) when is_binary(Value) ->
     case jose_base64:decodeurl(Value) of
         {ok, Thumbprint} ->
             Header#{'x5t#S256' => Thumbprint};
         {error, Reason} ->
-            throw({error, {invalid_header, {'x5t#S256', Reason}}})
+            throw({error, {invalid_header, 'x5t#S256', Reason}})
     end;
 parse_header_parameter_name(<<"x5t#S256">>, _Value, _Header) ->
-    throw({error, {invalid_header, {'x5t#S256', invalid_format}}});
+    throw({error, {invalid_header, 'x5t#S256', invalid_format}});
 parse_header_parameter_name(<<"typ">>, Value, Header) when is_binary(Value) ->
     case jose_media_type:parse(Value) of
         {ok, MediaType} ->
             Header#{typ => MediaType};
         {error, Reason} ->
-            throw({error, {invalid_header, {typ, Reason}}})
+            throw({error, {invalid_header, typ, Reason}})
     end;
 parse_header_parameter_name(<<"typ">>, _Value, _Header) ->
-    throw({error, {invalid_header, {typ, invalid_format}}});
+    throw({error, {invalid_header, typ, invalid_format}});
 parse_header_parameter_name(<<"cty">>, Value, Header) when is_binary(Value) ->
     case jose_media_type:parse(Value) of
         {ok, MediaType} ->
             Header#{cty => MediaType};
         {error, Reason} ->
-            throw({error, {invalid_header, {cty, Reason}}})
+            throw({error, {invalid_header, cty, Reason}})
     end;
 parse_header_parameter_name(<<"cty">>, _Value, _Header) ->
-    throw({error, {invalid_header, {cty, invalid_format}}});
+    throw({error, {invalid_header, cty, invalid_format}});
 parse_header_parameter_name(<<"crit">>, [], _Header) ->
-    throw({error, {invalid_header, {crit, invalid_format}}});
+    throw({error, {invalid_header, crit, invalid_format}});
 parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
     ReservedParameterNames = reserved_header_parameter_names() ++
         jose_jwa:reserved_header_parameter_names(),
@@ -240,20 +240,20 @@ parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
             (X) when is_binary(X) ->
                 case lists:member(X, ReservedParameterNames) of
                     true ->
-                        throw({error, {invalid_header, {crit, illegal_parameter_name}}});
+                        throw({error, {invalid_header, crit, illegal_parameter_name}});
                     false ->
                         X
                 end;
             (_) ->
-                throw({error, {invalid_header, {crit, invalid_format}}})
+                throw({error, {invalid_header, crit, invalid_format}})
         end,
     Header#{crit => lists:map(F, Value)};
 parse_header_parameter_name(<<"crit">>, _Value, _Header) ->
-    throw({error, {invalid_header, {crit, invalid_format}}});
+    throw({error, {invalid_header, crit, invalid_format}});
 parse_header_parameter_name(<<"b64">>, Value, Header) when is_boolean(Value) ->
     Header#{b64 => Value};
 parse_header_parameter_name(<<"b64">>, _Value, _Header) ->
-    throw({error, {invalid_header, {b64, invalid_format}}});
+    throw({error, {invalid_header, b64, invalid_format}});
 parse_header_parameter_name(Key, Value, Header) ->
     Header#{Key => Value}.
 
@@ -268,14 +268,14 @@ parse_x5c_header_parameter_name([H | T], Acc) when is_binary(H) ->
                        public_key:pkix_decode_cert(Data, otp)
                    catch
                        error:Reason ->
-                           throw({error, {invalid_header, {x5c, Reason}}})
+                           throw({error, {invalid_header, x5c, Reason}})
                    end,
             parse_x5c_header_parameter_name(T, [Cert | Acc]);
         {error, Reason} ->
-            throw({error, {invalid_header, {x5c, Reason}}})
+            throw({error, {invalid_header, x5c, Reason}})
     end;
 parse_x5c_header_parameter_name(_Value, _Acc) ->
-    throw({error, {invalid_header, {x5c, invalid_format}}}).
+    throw({error, {invalid_header, x5c, invalid_format}}).
 
 -spec decode_payload(header(), binary()) -> binary().
 decode_payload(#{b64 := false} = Header, Data) ->
