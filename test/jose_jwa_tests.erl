@@ -16,7 +16,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
-
 jwa_test_() ->
      [fun encode_alg/0,
       fun decode_alg/0,
