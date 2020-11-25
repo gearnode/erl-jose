@@ -4,12 +4,24 @@ mkdir -p priv/pki/ priv/pki/private
 
 openssl req \
         -x509 \
-        -newkey rsa:4096 \
         -nodes \
+        -newkey rsa:4096 \
         -keyout priv/pki/private/acme.key \
         -out priv/pki/acme.crt \
         -days 365 \
         -subj /CN=acme/O=test/C=FR/emailAddress=acme@example.com \
         -addext "subjectAltName = DNS:example.com,DNS:acme.example.com,email:acme@example.com" \
-        -addext keyUsage=digitalSignature \
-        -addext extendedKeyUsage=serverAuth
+        -addext keyUsage=digitalSignature
+
+openssl req \
+        -x509 \
+        -nodes \
+        -newkey ec \
+        -pkeyopt ec_paramgen_curve:secp521r1 \
+        -keyout priv/pki/private/example.key \
+        -out priv/pki/example.crt \
+        -days 365 \
+        -subj /CN=example/O=test/C=FR/emailAddress=contact@example.com \
+        -addext "subjectAltName = DNS:example.com,email:contact@example.com" \
+        -addext keyUsage=digitalSignature
+
