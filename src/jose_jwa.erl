@@ -14,6 +14,8 @@
 
 -module(jose_jwa).
 
+-include_lib("public_key/include/public_key.hrl").
+
 -export([reserved_header_parameter_names/0,
          supported_algorithms/0,
          support/1,
@@ -129,17 +131,29 @@ generate_key(hs384) ->
 generate_key(hs512) ->
     crypto:strong_rand_bytes(128);
 generate_key(es256) ->
-    crypto:generate_key(ecdh, secp256r1);
+    PrivKey = public_key:generate_key({namedCurve, secp256r1}),
+    PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp256r1}},
+    {PubKey, PrivKey};
 generate_key(es384) ->
-    crypto:generate_key(ecdh, secp384r1);
+    PrivKey = public_key:generate_key({namedCurve, secp384r1}),
+    PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp384r1}},
+    {PubKey, PrivKey};
 generate_key(es512) ->
-    crypto:generate_key(ecdh, secp521r1);
+    PrivKey = public_key:generate_key({namedCurve, secp521r1}),
+    PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp521r1}},
+    {PubKey, PrivKey};
 generate_key(rs256) ->
-    crypto:generate_key(rsa, {4096, 65537});
+    PrivKey = public_key:generate_key({rsa, 4096, 65537}),
+    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus, publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
+    {PubKey, PrivKey};
 generate_key(rs384) ->
-    crypto:generate_key(rsa, {4096, 65537});
+    PrivKey = public_key:generate_key({rsa, 4096, 65537}),
+    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus, publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
+    {PubKey, PrivKey};
 generate_key(rs512) ->
-    crypto:generate_key(rsa, {4096, 65537});
+    PrivKey = public_key:generate_key({rsa, 4096, 65537}),
+    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus, publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
+    {PubKey, PrivKey};
 generate_key(_) ->
     error(unsupported_alg).
 
@@ -154,27 +168,19 @@ sign(Value, hs384, Key) ->
 sign(Value, hs512, Key) ->
     crypto:mac(hmac, sha512, Key, Value);
 sign(Value, es256, Key) ->
-    Signature = crypto:sign(ecdsa, sha256, Value, [Key, secp256r1]),
-    decode_ecdsa_sign(Signature, 256);
+    public_key:sign(Value, sha256, Key);
 sign(Value, es384, Key) ->
-    Signature = crypto:sign(ecdsa, sha384, Value, [Key, secp384r1]),
-    decode_ecdsa_sign(Signature, 384);
+    public_key:sign(Value, sha384, Key);
 sign(Value, es512, Key) ->
-    Signature = crypto:sign(ecdsa, sha512, Value, [Key, secp521r1]),
-    decode_ecdsa_sign(Signature, 528);
+    public_key:sign(Value, sha512, Key);
 sign(Value, rs256, Key) ->
-    crypto:sign(rsa, sha256, Value, Key);
+    public_key:sign(Value, sha256, Key);
 sign(Value, rs384, Key) ->
-    crypto:sign(rsa, sha384, Value, Key);
+    public_key:sign(Value, sha384, Key);
 sign(Value, rs512, Key) ->
-    crypto:sign(rsa, sha512, Value, Key);
+    public_key:sign(Value, sha512, Key);
 sign(_, _, _) ->
     error(unsupported_alg).
-
--spec decode_ecdsa_sign(ecdsa_private_key(), non_neg_integer()) -> binary().
-decode_ecdsa_sign(Key, Size) ->
-    {_, R, S} = public_key:der_decode('ECDSA-Sig-Value', Key),
-    <<R:Size, S:Size>>.
 
 -spec verify(binary(), binary(), alg(), Key) -> boolean() when
       Key :: hmac_key() | ecdsa_public_key() | rsa_public_key().
@@ -187,24 +193,16 @@ verify(Value, Signature, hs384, Key) ->
 verify(Value, Signature, hs512, Key) ->
     Signature =:= sign(Value, hs512, Key);
 verify(Value, Signature, es256, Key) ->
-    Der = encode_ecdsa_sign(Signature, 256),
-    crypto:verify(ecdsa, sha256, Value, Der, [Key, secp256r1]);
+    public_key:verify(Value, sha256, Signature, Key);
 verify(Value, Signature, es384, Key) ->
-    Der = encode_ecdsa_sign(Signature, 384),
-    crypto:verify(ecdsa, sha384, Value, Der, [Key, secp384r1]);
+    public_key:verify(Value, sha384, Signature, Key);
 verify(Value, Signature, es512, Key) ->
-    Der = encode_ecdsa_sign(Signature, 528),
-    crypto:verify(ecdsa, sha512, Value, Der, [Key, secp521r1]);
+    public_key:verify(Value, sha512, Signature, Key);
 verify(Value, Signature, rs256, Key) ->
-    crypto:verify(rsa, sha256, Value, Signature, Key);
+    public_key:verify(Value, sha256, Signature, Key);
 verify(Value, Signature, rs384, Key) ->
-    crypto:verify(rsa, sha384, Value, Signature, Key);
+    public_key:verify(Value, sha384, Signature, Key);
 verify(Value, Signature, rs512, Key) ->
-    crypto:verify(rsa, sha512, Value, Signature, Key);
+    public_key:verify(Value, sha512, Signature, Key);
 verify(_, _, _, _) ->
     error(unsupported_alg).
-
--spec encode_ecdsa_sign(binary(), non_neg_integer()) -> binary().
-encode_ecdsa_sign(Value, Size) ->
-    <<R:Size/big, S:Size/big>> = Value,
-    public_key:der_encode('ECDSA-Sig-Value', {'ECDSA-Sig-Value', R, S}).
