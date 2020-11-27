@@ -30,10 +30,6 @@
               ecdsa/0,
               rsa/0,
               hmac_key/0,
-              ecdsa_public_key/0,
-              ecdsa_private_key/0,
-              rsa_public_key/0,
-              rsa_private_key/0,
               sign_key/0,
               verify_key/0]).
 
@@ -42,16 +38,10 @@
 -type ecdsa() :: es256 | es384 | es512.
 -type rsa() :: rs256 | rs384 | rs512.
 
--type key_integer() :: integer() | binary().
-
 -type hmac_key() :: binary().
--type ecdsa_public_key() :: key_integer().
--type ecdsa_private_key() :: key_integer().
--type rsa_public_key() :: [key_integer()].
--type rsa_private_key() :: [key_integer()].
 
--type sign_key() :: hmac_key() | ecdsa_private_key() | rsa_public_key().
--type verify_key() :: hmac_key() | ecdsa_public_key() | rsa_private_key().
+-type sign_key() :: hmac_key() | public_key:public_key().
+-type verify_key() :: hmac_key() | public_key:private_key().
 
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
 reserved_header_parameter_names() ->
@@ -119,9 +109,7 @@ decode_alg(<<"RS512">>) ->
 decode_alg(_Alg) ->
     {error, unsupported_alg}.
 
--spec generate_key(alg()) -> hmac_key()
-              | {ecdsa_public_key(), ecdsa_private_key()}
-              | {rsa_public_key(), rsa_private_key()}.
+-spec generate_key(alg()) -> hmac_key() | {public_key:public_key(), public_key:private_key()}.
 generate_key(none) ->
     <<>>;
 generate_key(hs256) ->
@@ -158,7 +146,7 @@ generate_key(_) ->
     error(unsupported_alg).
 
 -spec sign(binary(), alg(), Key) -> binary() when
-      Key :: hmac_key() | ecdsa_private_key() | rsa_private_key().
+      Key :: hmac_key() | public_key:private_key().
 sign(_Value, none, <<>>) ->
     <<>>;
 sign(Value, hs256, Key) ->
@@ -183,7 +171,7 @@ sign(_, _, _) ->
     error(unsupported_alg).
 
 -spec verify(binary(), binary(), alg(), Key) -> boolean() when
-      Key :: hmac_key() | ecdsa_public_key() | rsa_public_key().
+      Key :: hmac_key() | public_key:public_key().
 verify(_Value, Signature, none, <<>>) ->
     Signature =:= <<>>;
 verify(Value, Signature, hs256, Key) ->
