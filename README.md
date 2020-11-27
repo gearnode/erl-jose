@@ -5,9 +5,6 @@ This repository contains [RFC 7515](https://tools.ietf.org/html/rfc7515),
 [7518](https://tools.ietf.org/html/rfc7518) and
 [7797](https://tools.ietf.org/html/rfc7797) implementation for Erlang.
 
-# Documentation
-TODO
-
 # Build
 You can build the library with:
 
@@ -21,6 +18,16 @@ You can execute the test suite with:
 You can generate test coverage with:
 
     make cover
+
+# Documentation
+A handbook is available [in the `doc` directory](doc/handbook.md).
+
+
+# Contact
+If you find a bug or have any question, feel free to open a Github issue or to
+contact me [by email](mailto:bryan@frimin.fr).
+
+Please note that I do not currently review or accept any contribution.
 
 # License
 Released under the ISC license.
