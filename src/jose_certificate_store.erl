@@ -83,8 +83,8 @@ insert(Tab, Der) ->
     Cert = public_key:pkix_decode_cert(Der, otp),
     Sha1 = crypto:hash(sha, Der),
     Sha2 = crypto:hash(sha256, Der),
-    true = ets:insert(Tab, {Sha1, Cert}),
-    true = ets:insert(Tab, {Sha2, Cert}).
+    true = ets:insert(Tab, {{sha1, Sha1}, Cert}),
+    true = ets:insert(Tab, {{sha2, Sha2}, Cert}).
 
 terminate(_Reason, #{db := Tab}) ->
     ets:delete(Tab),
@@ -98,7 +98,7 @@ add(Ref, Der) ->
 remove(Ref, Der) ->
     gen_server:call(Ref, {remove, Der}).
 
--spec select(gen_server_ref(), jose:certificate_thumbprint()) -> {ok, jose:certificate()} | {error, term()}.
+-spec select(gen_server_ref(), {sha1 | sha2, jose:certificate_thumbprint()}) -> {ok, jose:certificate()} | error.
 select(Ref, Thumbprint) ->
     gen_server:call(Ref, {select, Thumbprint}).
 
@@ -109,14 +109,14 @@ handle_call({add, Der}, _From, State = #{db := Tab}) ->
 handle_call({remove, Der}, _From, State = #{db := Tab}) ->
     Sha1 = crypto:hash(sha, Der),
     Sha2 = crypto:hash(sha256, Der),
-    true = ets:delete(Tab, Sha1),
-    true = ets:delete(Tab, Sha2),
+    true = ets:delete(Tab, {sha1, Sha1}),
+    true = ets:delete(Tab, {sha2, Sha2}),
     {reply, ok, State};
 
 handle_call({select, Thumbprint}, _From, State = #{db := Tab}) ->
     Response = case ets:lookup(Tab, Thumbprint) of
                    [{_Id, Cert}] -> {ok, Cert};
-                   _Else -> {error, not_found}
+                   _Else -> error
                end,
     {reply, Response, State};
 

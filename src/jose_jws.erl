@@ -127,7 +127,7 @@ serialize_payload(_Header, Payload) ->
           {ok, header(), payload()} | {error, decode_error_reason()}.
 decode_compact(Token, Alg, Key) when not is_list(Key) ->
     decode_compact(Token, Alg, [Key]);
-decode_compact(Token, Alg, Keys) ->
+decode_compact(Token, Alg, Keys0) ->
     try
         {P1, P2, P3} = parse_parts(Token),
         Header = decode_header(P1),
@@ -135,7 +135,10 @@ decode_compact(Token, Alg, Keys) ->
         Signature = decode_signature(P3),
         Message = <<P1/binary, $., P2/binary>>,
 
+        CollectKeys = fun (A, B, C) -> collect_potential_verify_keys(A, B, C, Alg) end,
         VerifySig = fun (Key) -> jose_jwa:verify(Message, Signature, Alg, Key) end,
+
+        Keys = maps:fold(CollectKeys, Keys0, Header),
         case lists:any(VerifySig, Keys) of
             true -> {ok, Header, Payload};
             false -> {error, invalid_signature}
@@ -323,3 +326,83 @@ decode_signature(Data) ->
         {error, Reason} ->
             throw({error, {invalid_signature, Reason}})
     end.
+
+-spec collect_potential_verify_keys(atom(), term(), [jose_jwa:verify_key()], jose_jwa:alg()) -> [jose_jwa:verify_key()].
+collect_potential_verify_keys(x5t, Fingerprint, Acc, Alg) when Alg =:= rs256;
+                                                               Alg =:= rs384;
+                                                               Alg =:= rs512 ->
+    case jose_certificate_store:select(jose_certificate_store, {sha1, Fingerprint}) of
+        {ok, Cert} ->
+            case jose_crypto:extract_pub_from_cert(Cert) of
+                {'RSAPublicKey', _, _} = Key -> [Key | Acc];
+                _Else -> Acc
+            end;
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys(x5t, Fingerprint, Acc, Alg) when Alg =:= es256;
+                                                               Alg =:= es384;
+                                                               Alg =:= es512 ->
+    case jose_certificate_store:select(jose_certificate_store, {sha1, Fingerprint}) of
+        {ok, Cert} ->
+            case jose_crypto:extract_pub_from_cert(Cert) of
+                {{'ECPoint', _}, _} = PubKey -> [PubKey | Acc];
+                _Else -> Acc
+            end;
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= rs256;
+                                                                      Alg =:= rs384;
+                                                                      Alg =:= rs512 ->
+    case jose_certificate_store:select(jose_certificate_store, {sha2, Fingerprint}) of
+        {ok, Cert} ->
+            case jose_crypto:extract_pub_from_cert(Cert) of
+                {'RSAPublicKey', _, _} = PubKey -> [PubKey | Acc];
+                _Else -> Acc
+            end;
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= es256;
+                                                                      Alg =:= es384;
+                                                                      Alg =:= es512 ->
+    case jose_certificate_store:select(jose_certificate_store, {sha2, Fingerprint}) of
+        {ok, Cert} ->
+            case jose_crypto:extract_pub_from_cert(Cert) of
+                {{'ECPoint', _}, _} = PubKey -> [PubKey | Acc];
+                _Else -> Acc
+            end;
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys(x5c, [], Acc, _Alg) ->
+    Acc;
+collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= rs256;
+                                                    Alg =:= rs384;
+                                                    Alg =:= rs512 ->
+    [Root | _] = Chain,
+    case jose_certificate_store:select(jose_certificate_store, Root) of
+        {ok, _} ->
+            case jose_crypto:extract_pub_from_chain(Chain) of
+                {'RSAPublicKey', _, _} = PubKey -> [PubKey | Acc];
+                _Else -> Acc
+            end;
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= es256;
+                                                         Alg =:= es384;
+                                                         Alg =:= es512 ->
+    [Root | _] = Chain,
+    case jose_certificate_store:select(jose_certificate_store, Root) of
+        {ok, _} ->
+            case jose_crypto:extract_pub_from_chain(Chain) of
+                {{'ECPoint', _}, _} = PubKey -> [PubKey | Acc];
+                _Else -> Acc
+            end;
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys(_Key, _Value, Acc, _Alg) ->
+    Acc.
