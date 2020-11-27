@@ -23,7 +23,7 @@ start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    Children = [certificate_store_spec()],
+    Children = [certificate_store_spec(), key_store_spec()],
     Flags = #{strategy => one_for_one, intensity => 1, period => 5},
     {ok, {Flags, Children}}.
 
@@ -32,3 +32,9 @@ certificate_store_spec() ->
     Options = application:get_env(jose, certificate_store, #{}),
     #{id => certificate_store,
       start => {jose_certificate_store, start_link, [{local, jose_certificate_store}, Options]}}.
+
+-spec key_store_spec() -> supervisor:child_spec().
+key_store_spec() ->
+    Options = application:get_env(jose, key_store, #{}),
+    #{id => key_store,
+      start => {jose_key_store, start_link, [{local, jose_key_store}, Options]}}.
