@@ -1,9 +1,15 @@
 # Introduction
-This repository contains [RFC 7515](https://tools.ietf.org/html/rfc7515),
+This repository contains Erlang implementation of [RFC
+7515](https://tools.ietf.org/html/rfc7515),
 [7516](https://tools.ietf.org/html/rfc7516),
 [7517](https://tools.ietf.org/html/rfc7517),
 [7518](https://tools.ietf.org/html/rfc7518) and
-[7797](https://tools.ietf.org/html/rfc7797) implementation for Erlang.
+[7797](https://tools.ietf.org/html/rfc7797).
+
+# Motivation
+Existing JOSE implementations are not compatible with a lot of JOSE header
+parameter name which allow to easly manage JOSE with PKI infrastruture; and
+bind C library with NIF which render Erlang release portability more complex.
 
 # Build
 You can build the library with:
