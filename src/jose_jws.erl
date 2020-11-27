@@ -379,8 +379,8 @@ collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= es
 collect_potential_verify_keys(x5c, [], Acc, _Alg) ->
     Acc;
 collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= rs256;
-                                                    Alg =:= rs384;
-                                                    Alg =:= rs512 ->
+                                                         Alg =:= rs384;
+                                                         Alg =:= rs512 ->
     [Root | _] = Chain,
     case jose_certificate_store:select(jose_certificate_store, Root) of
         {ok, _} ->
