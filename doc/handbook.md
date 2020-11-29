@@ -50,6 +50,16 @@ The lable below describe the supported signature algorithms:
 Only algorithms used by Exograd are implemented at this moment, there is not
 plan to support more algorithms at the moment.
 
+## Encode
+### Compact
+TODO
+
+### JSON
+The JSON format is currently not supported.
+
+### Flattened JSON
+The Flattened JSON format is currently not supported.
+
 # Certificate store
 Certificate store is used to decode JWS, JWE or valid a JWK in order to make a
 trust decision.
