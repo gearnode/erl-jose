@@ -30,6 +30,7 @@ These term are defined by the documentation:
 
 # JSON Web Signature (JWS)
 ## Supported algorithms
+The lable below describe the supported signature algorithms:
 | "alg" param value | Digital signature or MAC algorithms            | Supported |
 |-------------------|------------------------------------------------|-----------|
 | HS256             | HMAC using SHA-256                             | YES       |
@@ -45,6 +46,9 @@ These term are defined by the documentation:
 | PS384             | RSASSA-PSS using SHA-384 and MGF1 with SHA-384 | NO        |
 | PS512             | RSASSA-PSS using SHA-512 and MGF1 with SHA-512 | NO        |
 | none              | No digital signature or MAC performed          | YES       |
+
+Only algorithms used by Exograd are implemented at this moment, there is not
+plan to support more algorithms at the moment.
 
 # Certificate store
 Certificate store is used to decode JWS, JWE or valid a JWK in order to make a
