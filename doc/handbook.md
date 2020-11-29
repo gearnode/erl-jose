@@ -47,8 +47,8 @@ The lable below describes supported signature algorithms:
 | PS512             | RSASSA-PSS using SHA-512 and MGF1 with SHA-512 | NO        |
 | none              | No digital signature or MAC performed          | YES       |
 
-Only algorithms used by Exograd are implemented at this moment, there is not
-plan to support more algorithms at the moment.
+Only algorithms used by Exograd are implemented and there is not plan to
+support more algorithms at the moment.
 
 ## Encode
 ### Compact
@@ -76,6 +76,17 @@ The JSON format is currently not supported.
 The Flattened JSON format is currently not supported.
 
 ## Decode
+The library understand and process `x5c`, `x5t`, `x5t#S256`, `x5u`, `jku`,
+`jwk` and `kid` header name to collect potential verify keys. For each
+collected key a trust decision is done by querying the [certificate
+store](#certificate-store) and the [key store](#key-store).
+
+**Note:** when the alg refer to a symetric key all collected key are evaluate as
+not trustable to avoid any security issue.
+
+### Key selections
+TODO
+
 ### Compact
 TODO
 
