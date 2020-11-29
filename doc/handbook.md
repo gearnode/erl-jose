@@ -14,7 +14,6 @@ versions can be modified without backward compatibility at any time.
 
 # Terminology
 These terms are used by this documentation:
-
 - **JSON Web Signature (JWS):** A data structure representing a digitally signed
   or MACed message.
 - **JOSE Header:** JSON object containing the parameters describing the
@@ -29,6 +28,23 @@ These term are defined by the documentation:
 - **Certificate store:** A database that store certificate to make trust decision
   when decoding JWS.
 
+# JSON Web Signature (JWS)
+## Supported algorithms
+| "alg" param value | Digital signature or MAC algorithms            | Supported |
+|-------------------|------------------------------------------------|-----------|
+| HS256             | HMAC using SHA-256                             | YES       |
+| HS384             | HMAC using SHA-384                             | YES       |
+| HS512             | HMAC using SHA-512                             | YES       |
+| RS256             | RSASSA-PKCS1-v1_5 using SHA-256                | YES       |
+| RS384             | RSASSA-PKCS1-v1_5 using SHA-384                | YES       |
+| RS512             | RSASSA-PKCS1-v1_5 using SHA-512                | YES       |
+| ES256             | ECDSA using P-256 and SHA-256                  | YES       |
+| ES384             | ECDSA using P-384 and SHA-384                  | YES       |
+| ES512             | ECDSA using P-521 and SHA-512                  | YES       |
+| PS256             | RSASSA-PSS using SHA-256 and MGF1 with SHA-256 | NO        |
+| PS384             | RSASSA-PSS using SHA-384 and MGF1 with SHA-384 | NO        |
+| PS512             | RSASSA-PSS using SHA-512 and MGF1 with SHA-512 | NO        |
+| none              | No digital signature or MAC performed          | YES       |
 
 # Certificate store
 Certificate store is used to decode JWS, JWE or valid a JWK in order to make a
