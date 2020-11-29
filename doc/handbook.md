@@ -7,10 +7,11 @@ trust decision.
 
 The certificate store can be populate with certificates at the application
 startup with the configuration:
-```erlang [{jose,
-            [{certificate_store,
-              #{file => ["/path/of/the/certificate.crt",
-                         "/path/of/other/certficiate.pem"]}}]}]
+```erlang
+[{jose,
+    [{certificate_store,
+        #{file => ["/path/of/the/certificate.crt",
+                   "/path/of/other/certficiate.pem"]}}]}]
 ```
 The certificate file **MUST** be a PEM encoded file and **MAY** be a
 certificate bundle.
