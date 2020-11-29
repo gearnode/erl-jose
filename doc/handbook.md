@@ -30,7 +30,7 @@ These term are defined by the documentation:
 
 # JSON Web Signature (JWS)
 ## Supported algorithms
-The lable below describe the supported signature algorithms:
+The lable below describes supported signature algorithms:
 | "alg" param value | Digital signature or MAC algorithms            | Supported |
 |-------------------|------------------------------------------------|-----------|
 | HS256             | HMAC using SHA-256                             | YES       |
