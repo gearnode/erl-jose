@@ -52,7 +52,13 @@ plan to support more algorithms at the moment.
 
 ## Encode
 ### Compact
-TODO
+Encode JWS in compact format can be done with:
+```erlang
+Header = #{alg => hs256},
+Payload = <<"signed message">>,
+Key = <<"secret key">>,
+jose_jws:encode_compact(Header, Payload, hs256, Key).
+```
 
 ### JSON
 The JSON format is currently not supported.
