@@ -60,8 +60,8 @@ Key = <<"secret key">>,
 jose_jws:encode_compact(Header, Payload, hs256, Key).
 ```
 
-The library understand and process the `b64` header name extenssion, encoding
-JWS in compact format with non base64url encoded payload can be done with:
+The library understand and process the `b64` header name. Encode JWS in
+compact format with non base64url encoded payload can be done with:
 ```erlang
 Header = #{alg => hs256, b64 => false, crit => [<<"b64">>]},
 Payload = <<"signed message not base64 encoded">>,
