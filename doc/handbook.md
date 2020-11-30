@@ -85,9 +85,6 @@ store](#certificate-store) and the [key store](#key-store).
 **NOTE:** when the alg refers to a symmetric key each collected key is
 evaluated as not trustable to not allow JWS crafting by an attacker.
 
-### Key selections
-TODO
-
 ### Compact
 TODO
 
@@ -96,3 +93,48 @@ The JSON format is currently not supported.
 
 ### Flattened JSON
 The Flattened JSON format is currently not supported.
+
+# Certificate store
+As describes in the [decode section](#decode), the library understands and
+processes `x5t`, `x5t#S255`, x5c`, and `x5u` header names. Those header names
+hint at which certificates sign or encrypt the JOSE token. The certificate
+must be in the certificate store to be trusted; otherwise, it evaluates it as
+not trustable. In brief, the certificate store is a collection of trusted
+certificates.
+
+## Configuration
+The `jose_sup` created a certificate store based on the `jose` application
+configuration. The certificate store configuration allows loading certificate
+bundles at the process startup.
+
+```erlang
+[{jose,
+    [{certificate_store,
+        #{files => ["priv/pki/acme.crt",
+                    "priv/pki/example.crt"]}}]}].
+```
+
+## Add a certificate
+It is possible adding a new certificate after the process boot with:
+```erlang
+% Der must be a valid Der encoded certificate.
+jose_certificate_store:add(certificate_store_default, Der).
+```
+
+## Remove a certificate
+It is possible removing a new certificate after the process boot with:
+```erlang
+% Der must be a valid Der encoded certificate.
+jose_certificate_store:remove(certificate_store_default, Der).
+```
+
+## Find a certificate
+`certificate-store` store certificates by their SHA1 fingerprint and SHA256
+fingerprint. Finding a certificate with:
+```erlang
+jose_certificate_store:find(certificate_store_default, {sha1, Sha1Fingerprint}).
+jose_certificate_store:find(certificate_store_default, {sha2, Sha2Fingerprint}).
+```
+
+# Key store
+TODO
