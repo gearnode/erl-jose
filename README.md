@@ -7,9 +7,10 @@ This repository contains Erlang implementation of [RFC
 [7797](https://tools.ietf.org/html/rfc7797).
 
 # Motivation
-Existing JOSE implementations are not compatible with a lot of JOSE header
-parameter name which allow to easly manage JOSE with PKI infrastruture; and
-bind C library with NIF which render Erlang release portability more complex.
+Existing JOSE implementations are not compatible with many JOSE header
+parameter names, which allows managing JOSE with PKI infrastructure easily;
+and bind C library with NIF, which renders Erlang release portability more
+complex.
 
 # Build
 You can build the library with:
