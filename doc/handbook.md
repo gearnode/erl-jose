@@ -15,7 +15,7 @@ versions can be modified without backward compatibility at any time.
 # Terminology
 These terms are used by this documentation:
 - **JSON Web Signature (JWS):** A data structure representing a digitally signed
-  or MACed message.
+  or MAC message.
 - **JOSE Header:** JSON object containing the parameters describing the
   cryptographic operations and parameters employed.
 - **JWS Payload:** The sequence of octets to be secured. The payload can contain
