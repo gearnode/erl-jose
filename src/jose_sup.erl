@@ -37,4 +37,4 @@ certificate_store_spec() ->
 key_store_spec() ->
     Options = application:get_env(jose, key_store, #{}),
     #{id => key_store,
-      start => {jose_key_store, start_link, [{local, jose_key_store}, Options]}}.
+      start => {jose_key_store, start_link, [{local, key_store_default}, Options]}}.

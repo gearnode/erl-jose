@@ -162,18 +162,18 @@ bundles at the process startup.
 ## Add a key
 It is possible adding a new key after the process boot with:
 ```erlang
-% Key must be a valid public key.
-jose_key_store:add(key_store_default, <<"some key id">>, Key).
+% Key must be a valid public key in PemEntry format.
+jose_key_store:add(key_store_default, PemEntry).
 ```
 
 ## Remove a key
 It is possible removing a key after the process boot with:
 ```erlang
-jose_key_store:remove(key_store_default, <<"some key id">>).
+jose_key_store:remove(key_store_default, <<"md5 of the DER">>).
 ```
 
 ## Find a key
-It is possible finding a key with:
+`key-store` store public key by their MD5 fingerprint. It is possible finding a key with:
 ```erlang
-jose_key_store:find(key_store_default, <<"some key id">>).
+jose_key_store:find(key_store_default, <<"md5 of the DER">>).
 ```
