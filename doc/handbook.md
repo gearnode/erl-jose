@@ -173,7 +173,7 @@ jose_key_store:remove(key_store_default, <<"md5 of the DER">>).
 ```
 
 ## Find a key
-`key-store` store public key by their MD5 fingerprint. It is possible finding a key with:
+`key-store` store public key by the MD5 fingerprint. It is possible finding a key with:
 ```erlang
 jose_key_store:find(key_store_default, <<"md5 of the DER">>).
 ```
