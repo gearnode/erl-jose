@@ -28,6 +28,9 @@ These terms are defined by the documentation:
 - **Certificate store:** A database that stores certificates to make trust
   decisions when decoding JWS.
 
+# JSON Web Key (JWK)
+TODO
+
 # JSON Web Signature (JWS)
 ## Supported algorithms
 The table below describes supported signature algorithms:
@@ -94,6 +97,9 @@ The JSON format is currently not supported.
 ### Flattened JSON
 The Flattened JSON format is currently not supported.
 
+# JSON Web Token (JWT)
+TODO
+
 # Certificate store
 As described in the [decode section](#decode), the library understands and
 processes `x5t`, `x5t#S255`, `x5c`, and `x5u` header names. Those header names
@@ -103,10 +109,9 @@ not trustable. In brief, the certificate stores is a collection of trusted
 certificates.
 
 ## Configuration
-The `jose_sup` created a certificate store based on the `jose` application
+The `jose_sup` creates a certificate store base on the `jose` application
 configuration. The certificate store configuration allows loading certificate
 bundles at the process startup.
-
 ```erlang
 [{jose,
     [{certificate_store,
@@ -122,7 +127,7 @@ jose_certificate_store:add(certificate_store_default, Der).
 ```
 
 ## Remove a certificate
-It is possible removing a new certificate after the process boot with:
+It is possible removing a certificate after the process boot with:
 ```erlang
 % Der must be a valid Der encoded certificate.
 jose_certificate_store:remove(certificate_store_default, Der).
@@ -137,4 +142,38 @@ jose_certificate_store:find(certificate_store_default, {sha2, Sha2Fingerprint}).
 ```
 
 # Key store
-TODO
+As described in the [decode section](#decode), the library understands and
+processes `kid` header names. Those header names hint at which keys sign or
+encrypt the JOSE token. The key stores act as a trusted public keys store to
+verify the signature or decrypt a JOSE token.
+
+## Configuration
+The `jose_sup` creates a certificate store base on the `jose` application
+configuration. The certificate store configuration allows loading certificate
+bundles at the process startup.
+```erlang
+[{jose,
+    [{key_store,
+        #{files => ["priv/pki/acme.crt",
+                    "priv/pki/example.crt"]}}]}].
+```
+
+
+## Add a key
+It is possible adding a new key after the process boot with:
+```erlang
+% Key must be a valid public key.
+jose_key_store:add(key_store_default, <<"some key id">>, Key).
+```
+
+## Remove a key
+It is possible removing a key after the process boot with:
+```erlang
+jose_key_store:remove(key_store_default, <<"some key id">>).
+```
+
+## Find a key
+It is possible finding a key with:
+```erlang
+jose_key_store:find(key_store_default, <<"some key id">>).
+```
