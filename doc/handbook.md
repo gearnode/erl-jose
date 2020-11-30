@@ -24,7 +24,7 @@ These terms are used by this documentation:
   the JWS Payload.
 - **Header Parameter:** A name/value pair that is member of the JOSE Header.
 
-These term are defined by the documentation:
+These terms are defined by the documentation:
 - **Certificate store:** A database that stores certificates to make trust
   decisions when decoding JWS.
 
