@@ -404,5 +404,23 @@ collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= es256;
         error ->
             Acc
     end;
+collect_potential_verify_keys(kid, KId, Acc, Alg) when Alg =:= rs256;
+                                                       Alg =:= rs384;
+                                                       Alg =:= rs512 ->
+    case jose_key_store:find(key_store_default, KId) of
+        {ok, {'RSAPublicKey', _, _} = PubKey} ->
+            [PubKey | Acc];
+        error ->
+            Acc
+    end;
+collect_potential_verify_keys(kid, KId, Acc, Alg) when Alg =:= es256;
+                                                       Alg =:= es384;
+                                                       Alg =:= es512 ->
+    case jose_key_store:find(key_store_default, KId) of
+        {ok, {{'ECPoint', _}, _} = PubKey} ->
+            [PubKey | Acc];
+        error ->
+            Acc
+    end;
 collect_potential_verify_keys(_Key, _Value, Acc, _Alg) ->
     Acc.
