@@ -120,7 +120,7 @@ lookup(Tab, Thumbprint) ->
         _Else -> error
     end.
 
--spec read_cert_files(file:filename_all(), [binary()]) -> [binary()].
+-spec read_cert_files([file:filename_all()], [binary()]) -> [binary()].
 read_cert_files([], Acc) ->
     Acc;
 read_cert_files([Filename | T], Acc) ->

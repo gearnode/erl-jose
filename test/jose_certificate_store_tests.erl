@@ -26,29 +26,29 @@ db_test_() ->
 
 add() ->
     #{cert := Der, key := _Key} = public_key:pkix_test_root_cert("jose_test", []),
-    ?assertEqual(ok, jose_certificate_store:add(jose_certificate_store, Der)),
-    ?assertEqual(ok, jose_certificate_store:add(jose_certificate_store, Der)).
+    ?assertEqual(ok, jose_certificate_store:add(certificate_store_default, Der)),
+    ?assertEqual(ok, jose_certificate_store:add(certificate_store_default, Der)).
 
 remove() ->
     #{cert := Der, key := _Key} = public_key:pkix_test_root_cert("jose_test", []),
     Sha1 = crypto:hash(sha, Der),
     Sha2 = crypto:hash(sha256, Der),
-    ?assertEqual(ok, jose_certificate_store:remove(jose_certificate_store, Sha1)),
-    ?assertEqual(ok, jose_certificate_store:remove(jose_certificate_store, Sha2)),
-    ?assertEqual(ok, jose_certificate_store:add(jose_certificate_store, Der)),
-    ?assertEqual(ok, jose_certificate_store:remove(jose_certificate_store, Sha2)),
-    ?assertEqual(ok, jose_certificate_store:remove(jose_certificate_store, Sha1)).
+    ?assertEqual(ok, jose_certificate_store:remove(certificate_store_default, Sha1)),
+    ?assertEqual(ok, jose_certificate_store:remove(certificate_store_default, Sha2)),
+    ?assertEqual(ok, jose_certificate_store:add(certificate_store_default, Der)),
+    ?assertEqual(ok, jose_certificate_store:remove(certificate_store_default, Sha2)),
+    ?assertEqual(ok, jose_certificate_store:remove(certificate_store_default, Sha1)).
 
 find() ->
     #{cert := Der, key := _Key} = public_key:pkix_test_root_cert("jose_test", []),
     Cert = public_key:pkix_decode_cert(Der, otp),
     Sha1 = crypto:hash(sha, Der),
     Sha2 = crypto:hash(sha256, Der),
-    ?assertEqual(error, jose_certificate_store:find(jose_certificate_store, Sha1)),
-    ?assertEqual(error, jose_certificate_store:find(jose_certificate_store, Sha2)),
-    ?assertEqual(ok, jose_certificate_store:add(jose_certificate_store, Der)),
-    ?assertEqual({ok, Cert}, jose_certificate_store:find(jose_certificate_store, {sha1, Sha1})),
-    ?assertEqual({ok, Cert}, jose_certificate_store:find(jose_certificate_store, {sha2, Sha2})),
-    ?assertEqual(ok, jose_certificate_store:remove(jose_certificate_store, Der)),
-    ?assertEqual(error, jose_certificate_store:find(jose_certificate_store, {sha1, Sha1})),
-    ?assertEqual(error, jose_certificate_store:find(jose_certificate_store, {sha2, Sha2})).
+    ?assertEqual(error, jose_certificate_store:find(certificate_store_default, Sha1)),
+    ?assertEqual(error, jose_certificate_store:find(certificate_store_default, Sha2)),
+    ?assertEqual(ok, jose_certificate_store:add(certificate_store_default, Der)),
+    ?assertEqual({ok, Cert}, jose_certificate_store:find(certificate_store_default, {sha1, Sha1})),
+    ?assertEqual({ok, Cert}, jose_certificate_store:find(certificate_store_default, {sha2, Sha2})),
+    ?assertEqual(ok, jose_certificate_store:remove(certificate_store_default, Der)),
+    ?assertEqual(error, jose_certificate_store:find(certificate_store_default, {sha1, Sha1})),
+    ?assertEqual(error, jose_certificate_store:find(certificate_store_default, {sha2, Sha2})).
