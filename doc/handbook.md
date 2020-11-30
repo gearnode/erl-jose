@@ -96,7 +96,7 @@ The Flattened JSON format is currently not supported.
 
 # Certificate store
 As describes in the [decode section](#decode), the library understands and
-processes `x5t`, `x5t#S255`, x5c`, and `x5u` header names. Those header names
+processes `x5t`, `x5t#S255`, `x5c`, and `x5u` header names. Those header names
 hint at which certificates sign or encrypt the JOSE token. The certificate
 must be in the certificate store to be trusted; otherwise, it evaluates it as
 not trustable. In brief, the certificate store is a collection of trusted
