@@ -25,8 +25,8 @@ These terms are used by this documentation:
 - **Header Parameter:** A name/value pair that is member of the JOSE Header.
 
 These term are defined by the documentation:
-- **Certificate store:** A database that store certificate to make trust decision
-  when decoding JWS.
+- **Certificate store:** A database that stores certificates to make trust
+  decisions when decoding JWS.
 
 # JSON Web Signature (JWS)
 ## Supported algorithms
@@ -47,7 +47,7 @@ The lable below describes supported signature algorithms:
 | PS512             | RSASSA-PSS using SHA-512 and MGF1 with SHA-512 | NO        |
 | none              | No digital signature or MAC performed          | YES       |
 
-Only algorithms used by Exograd are implemented and there is not plan to
+Only algorithms used by Exograd are implemented and there is no plan to
 support more algorithms at the moment.
 
 ## Encode
@@ -60,8 +60,9 @@ Key = <<"secret key">>,
 jose_jws:encode_compact(Header, Payload, hs256, Key).
 ```
 
-The library understand and process the `b64` header name. Encode JWS in
-compact format with non base64url encoded payload can be done with:
+
+The library understands and processes the `b64` header name. Encode JWS in
+compact format with non-base64url encoded payload can be done with:
 ```erlang
 Header = #{alg => hs256, b64 => false, crit => [<<"b64">>]},
 Payload = <<"signed message not base64 encoded">>,
@@ -76,13 +77,13 @@ The JSON format is currently not supported.
 The Flattened JSON format is currently not supported.
 
 ## Decode
-The library understand and process `x5c`, `x5t`, `x5t#S256`, `x5u`, `jku`,
-`jwk` and `kid` header name to collect potential verify keys. For each
+The library understands and processes `x5c`, `x5t`, `x5t#S256`, `x5u`, `jku`,
+`jwk`, and `kid` header name to collect potential verify keys. For each
 collected key a trust decision is done by querying the [certificate
 store](#certificate-store) and the [key store](#key-store).
 
-**Note:** when the alg refer to a symetric key all collected keys are evaluate as
-not trustable to not allow JWS crafting by an attaker.
+**NOTE:** when the alg refers to a symmetric key each collected key is
+evaluated as not trustable to not allow JWS crafting by an attacker.
 
 ### Key selections
 TODO
@@ -95,28 +96,3 @@ The JSON format is currently not supported.
 
 ### Flattened JSON
 The Flattened JSON format is currently not supported.
-
-# Certificate store
-Certificate store is used to decode JWS, JWE or valid a JWK in order to make a
-trust decision.
-
-The certificate store can be populate with certificates at the application
-startup with the configuration:
-```erlang
-[{jose,
-    [{certificate_store,
-        #{file => ["/path/of/the/certificate.crt",
-                   "/path/of/other/certficiate.pem"]}}]}]
-```
-The certificate file **MUST** be a PEM encoded file and **MAY** be a
-certificate bundle.
-
-Add certificate in the store with:
-```erlang
-ok = jose_certificate_store:add(jose_certificate_store, Der}.
-```
-
-Or remove certificate in the store:
-```erlang
-ok = jose_certificate_store:remove(jose_certificate_store, Der).
-```
