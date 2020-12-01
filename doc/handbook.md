@@ -63,7 +63,6 @@ Key = <<"secret key">>,
 jose_jws:encode_compact(Header, Payload, hs256, Key).
 ```
 
-
 The library understands and processes the `b64` header name. Encode JWS in
 compact format with non-base64url encoded payload can be done with:
 ```erlang
@@ -98,6 +97,24 @@ The JSON format is currently not supported.
 The Flattened JSON format is currently not supported.
 
 # JSON Web Token (JWT)
+## Encode
+Encode JWT can be done with:
+```erlang
+Key = jose_jwa:generate_key(hs256),
+Header = Header = #{alg => hs256, typ => <<"application/JWT">>},
+Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
+jose_jwt:encode(Header, Payload, hs256, Key).
+```
+
+The library understands and processes the `b64` header name. Encode JWT in
+with non-base64url encoded payload can be done with:
+```erlang
+Key = jose_jwa:generate_key(hs256),
+Header = Header = #{alg => hs256, typ => <<"application/JWT">>, b64 => false, crit => [<<"b64">>]},
+Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
+jose_jwt:encode(Header, Payload, hs256, Key).
+```
+## Decode
 TODO
 
 # Certificate store
