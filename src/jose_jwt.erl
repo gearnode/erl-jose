@@ -59,7 +59,7 @@
 
 -type string_or_uri() :: binary() | uri:uri().
 
--type encode_options() :: #{header_claims := [atom() | binary()].
+-type encode_options() :: #{header_claims := [atom() | binary()]}.
 -type decode_options() :: map().
 
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
