@@ -29,7 +29,7 @@ These terms are defined by the documentation:
   decisions when decoding JWS.
 
 # JSON Web Key (JWK)
-TODO
+The JWK is currently not supported.
 
 # JSON Web Signature (JWS)
 ## Supported algorithms
@@ -95,6 +95,9 @@ The JSON format is currently not supported.
 
 ### Flattened JSON
 The Flattened JSON format is currently not supported.
+
+# JWE
+The JWE is currently not supported.
 
 # JSON Web Token (JWT)
 ## Encode
