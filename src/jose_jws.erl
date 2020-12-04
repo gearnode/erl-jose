@@ -15,7 +15,7 @@
 -module(jose_jws).
 
 -export([reserved_header_parameter_names/0,
-         encode_compact/4,
+         encode_compact/3,
          decode_compact/3]).
 
 -export_type([header/0,
@@ -54,9 +54,11 @@ reserved_header_parameter_names() ->
      <<"x5u">>, <<"x5c">>, <<"x5t">>, <<"x5t#S256">>,
      <<"typ">>, <<"cty">>, <<"crit">>].
 
--spec encode_compact(header(), payload(), jose_jwa:alg(), jose_jwa:sign_key()) ->
+-type jws() :: {header(), payload()}.
+
+-spec encode_compact(jws(), jose_jwa:alg(), jose_jwa:sign_key()) ->
           compact().
-encode_compact(Header, Payload, Alg, Key) ->
+encode_compact({Header, Payload}, Alg, Key) ->
     EncodedHeader = serialize_header(Header),
     EncodedPayload = serialize_payload(Header, Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
@@ -124,7 +126,7 @@ serialize_payload(_Header, Payload) ->
     jose_base64:encodeurl(Payload, #{padding => false}).
 
 -spec decode_compact(compact(), jose_jwa:alg(), [jose_jwa:verify_key()] | jose_jwa:verify_key()) ->
-          {ok, header(), payload()} | {error, decode_error_reason()}.
+          {ok, jws()} | {error, decode_error_reason()}.
 decode_compact(Token, Alg, Key) when not is_list(Key) ->
     decode_compact(Token, Alg, [Key]);
 decode_compact(Token, Alg, Keys0) ->
@@ -140,7 +142,7 @@ decode_compact(Token, Alg, Keys0) ->
 
         Keys = maps:fold(CollectKeys, Keys0, Header),
         case lists:any(VerifySig, Keys) of
-            true -> {ok, Header, Payload};
+            true -> {ok, {Header, Payload}};
             false -> {error, invalid_signature}
         end
     catch
