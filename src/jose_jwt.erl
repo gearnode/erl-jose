@@ -59,7 +59,8 @@
 
 -type string_or_uri() :: binary() | uri:uri().
 
--type encode_options() :: map().
+-type encode_options() :: #{header_claims := [atom() | binary()].
+-type decode_options() :: map().
 
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
 reserved_header_parameter_names() ->
@@ -70,12 +71,18 @@ reserved_header_parameter_names() ->
 
 -spec encode_compact(jwt(), jose_jwa:alg(), jose_jwa:verify_key()) -> binary().
 encode_compact(JWT, Alg, PrivKey) ->
-    DefaultOptions = #{},
+    DefaultOptions = #{header_claims => []},
     encode_compact(JWT, Alg, PrivKey, DefaultOptions).
 
 -spec encode_compact(jwt(), jose_jwa:alg(), jose_jwa:verify_key(), encode_options()) -> binary().
-encode_compact({Header0, Payload0}, Alg, PrivKey, _Options) ->
-    Header = maps:fold(fun serialize_claim/3, #{}, Header0),
+encode_compact({Header0, Payload0}, Alg, PrivKey, Options) ->
+    Header1 = case maps:get(header_claims, Options) of
+                  [] ->
+                      Header0;
+                  Claims ->
+                      maps:merge(maps:with(Claims, Payload0), Header0)
+              end,
+    Header = maps:fold(fun serialize_claim/3, #{}, Header1),
     Payload = json:serialize(maps:fold(fun serialize_claim/3, #{}, Payload0), #{return_binary => true}),
     jose_jws:encode_compact({Header, Payload}, Alg, PrivKey).
 

@@ -114,6 +114,12 @@ Header = Header = #{alg => hs256, typ => <<"application/JWT">>, b64 => false, cr
 Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
 jose_jwt:encode_compact({Header, Payload}, hs256, Key).
 ```
+
+Encode accepts following options:
+| Option        | Description                                         |
+|---------------|-----------------------------------------------------|
+| header_claims | A list of JWT claims to merge in the header object. |
+
 ## Decode
 TODO
 
