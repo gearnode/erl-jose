@@ -103,7 +103,7 @@ Encode JWT can be done with:
 Key = jose_jwa:generate_key(hs256),
 Header = Header = #{alg => hs256, typ => <<"application/JWT">>},
 Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
-jose_jwt:encode({Header, Payload}, hs256, Key).
+jose_jwt:encode_compact({Header, Payload}, hs256, Key).
 ```
 
 The library understands and processes the `b64` header name. Encode JWT in
@@ -112,7 +112,7 @@ with non-base64url encoded payload can be done with:
 Key = jose_jwa:generate_key(hs256),
 Header = Header = #{alg => hs256, typ => <<"application/JWT">>, b64 => false, crit => [<<"b64">>]},
 Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
-jose_jwt:encode({Header, Payload}, hs256, Key).
+jose_jwt:encode_compact({Header, Payload}, hs256, Key).
 ```
 ## Decode
 TODO
