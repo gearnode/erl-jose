@@ -17,11 +17,17 @@
 -define(EPOCH, calendar:datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})).
 
 -export([reserved_header_parameter_names/0,
-         encode/4]).
+         encode_compact/3,
+         encode_compact/4]).
 
--export_type([header/0,
+-export_type([jwt/0,
+              header/0,
               payload/0,
-              string_or_uri/0]).
+              string_or_uri/0,
+              encode_options/0,
+              decode_options/0]).
+
+-type jwt() :: {header(), payload()}.
 
 -type header() :: #{alg => jose_jwa:alg(),
                     jku => uri:uri(),
@@ -53,6 +59,8 @@
 
 -type string_or_uri() :: binary() | uri:uri().
 
+-type encode_options() :: map().
+
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
 reserved_header_parameter_names() ->
     [<<"alg">>, <<"jku">>, <<"jwk">>, <<"kid">>,
@@ -60,11 +68,16 @@ reserved_header_parameter_names() ->
      <<"typ">>, <<"cty">>, <<"crit">>, <<"iss">>, <<"aud">>,
      <<"exp">>, <<"nbf">>, <<"iat">>, <<"jti">>].
 
--spec encode(header(), payload(), jose_jwa:alg(), public_key:private_key()) -> binary().
-encode(Header0, Payload0, Alg, PrivKey) ->
+-spec encode_compact(jwt(), jose_jwa:alg(), jose_jwa:verify_key()) -> binary().
+encode_compact(JWT, Alg, PrivKey) ->
+    DefaultOptions = #{},
+    encode_compact(JWT, Alg, PrivKey, DefaultOptions).
+
+-spec encode_compact(jwt(), jose_jwa:alg(), jose_jwa:verify_key(), encode_options()) -> binary().
+encode_compact({Header0, Payload0}, Alg, PrivKey, _Options) ->
     Header = maps:fold(fun serialize_claim/3, #{}, Header0),
     Payload = json:serialize(maps:fold(fun serialize_claim/3, #{}, Payload0), #{return_binary => true}),
-    jose_jws:encode_compact(Header, Payload, Alg, PrivKey).
+    jose_jws:encode_compact({Header, Payload}, Alg, PrivKey).
 
 -spec serialize_claim(json:key(), term(), map()) -> map().
 serialize_claim(iss, Value, Acc) when is_binary(Value) ->
