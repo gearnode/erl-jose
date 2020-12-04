@@ -44,6 +44,7 @@
 -type cty() :: binary().
 -type payload() :: binary().
 -type compact() :: binary().
+-type jws() :: {header(), payload()}.
 
 -type encode_options() :: map().
 
@@ -58,8 +59,6 @@ reserved_header_parameter_names() ->
     [<<"alg">>, <<"jku">>, <<"jwk">>, <<"kid">>,
      <<"x5u">>, <<"x5c">>, <<"x5t">>, <<"x5t#S256">>,
      <<"typ">>, <<"cty">>, <<"crit">>].
-
--type jws() :: {header(), payload()}.
 
 -spec encode_compact(jws(), jose_jwa:alg(), jose_jwa:sign_key()) ->
           compact().
