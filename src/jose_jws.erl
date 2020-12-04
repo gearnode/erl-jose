@@ -15,8 +15,8 @@
 -module(jose_jws).
 
 -export([reserved_header_parameter_names/0,
-         encode_compact/2,
          encode_compact/3,
+         encode_compact/4,
          decode_compact/3]).
 
 -export_type([header/0,
