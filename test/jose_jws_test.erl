@@ -22,8 +22,8 @@ must(_) ->
     erlang:error("must failed").
 
 encode_decode({Header, Payload, Key}) ->
-    Token = jose_jws:encode_compact(Header, Payload, hs256, Key),
-    ?assertMatch({ok, _, _}, jose_jws:decode_compact(Token, hs256, [<<"lol lol lol">>, Key])).
+    Token = jose_jws:encode_compact({Header, Payload}, hs256, Key),
+    ?assertMatch({ok, {_, _}}, jose_jws:decode_compact(Token, hs256, [<<"lol lol lol">>, Key])).
 
 encode_compact_test_() ->
     Header0 = #{alg => hs256,
