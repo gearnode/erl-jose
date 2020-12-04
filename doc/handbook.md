@@ -60,7 +60,7 @@ Encode JWS in compact format can be done with:
 Header = #{alg => hs256},
 Payload = <<"signed message">>,
 Key = <<"secret key">>,
-jose_jws:encode_compact(Header, Payload, hs256, Key).
+jose_jws:encode_compact({Header, Payload}, hs256, Key).
 ```
 
 The library understands and processes the `b64` header name. Encode JWS in
@@ -69,7 +69,7 @@ compact format with non-base64url encoded payload can be done with:
 Header = #{alg => hs256, b64 => false, crit => [<<"b64">>]},
 Payload = <<"signed message not base64 encoded">>,
 Secret = <<"secret key">>,
-jose_jwa:encode_compact(Header, Payload, hs256, Key).
+jose_jwa:encode_compact({Header, Payload}, hs256, Key).
 ```
 
 ### JSON
