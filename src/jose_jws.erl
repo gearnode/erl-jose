@@ -15,6 +15,7 @@
 -module(jose_jws).
 
 -export([reserved_header_parameter_names/0,
+         encode_compact/2,
          encode_compact/3,
          decode_compact/3]).
 
@@ -23,6 +24,7 @@
               cty/0,
               payload/0,
               compact/0,
+              encode_options/0,
               decode_error_reason/0]).
 
 -type header() :: #{alg => jose_jwa:alg(),
@@ -42,6 +44,9 @@
 -type cty() :: binary().
 -type payload() :: binary().
 -type compact() :: binary().
+
+-type encode_options() :: map().
+
 -type decode_error_reason() :: invalid_format
                              | {invalid_header, Key :: term(), Reason :: term()}
                              | {invalid_header, Reason :: term()}
@@ -58,7 +63,13 @@ reserved_header_parameter_names() ->
 
 -spec encode_compact(jws(), jose_jwa:alg(), jose_jwa:sign_key()) ->
           compact().
-encode_compact({Header, Payload}, Alg, Key) ->
+encode_compact(JWS, Alg, Key) ->
+    DefaultOptions = #{},
+    encode_compact(JWS, Alg, Key, DefaultOptions).
+
+-spec encode_compact(jws(), jose_jwa:alg(), jose_jwa:sign_key(), encode_options()) ->
+          compact().
+encode_compact({Header, Payload}, Alg, Key, _Options) ->
     EncodedHeader = serialize_header(Header),
     EncodedPayload = serialize_payload(Header, Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
