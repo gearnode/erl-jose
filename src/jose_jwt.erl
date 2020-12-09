@@ -160,7 +160,7 @@ decode_compact(Bin, Alg,Key, Options) ->
             end;
         [_,_,_,_,_] ->
             {error, jwe_not_supported};
-        error ->
+        _Else ->
             {error, invalid_format}
     end.
 
@@ -217,7 +217,7 @@ parse_claim(<<"jti">>, _, _) ->
 parse_claim(Key, Value, Acc) ->
     Acc#{Key => Value}.
 
--spec parse_string_or_uri(binary()) -> string_or_uri().
+-spec parse_string_or_uri(term()) -> {ok, string_or_uri()} | {error, term()}.
 parse_string_or_uri(Value0) when is_binary(Value0) ->
     case binary:split(Value0, <<$:>>) of
         [_, _] -> case uri:parse(Value0) of
@@ -229,7 +229,7 @@ parse_string_or_uri(Value0) when is_binary(Value0) ->
 parse_string_or_uri(_) ->
     {error, invalid_format}.
 
--spec ensure_header_replicated_claims_match(jwt()) -> no_return().
+-spec ensure_header_replicated_claims_match(jwt()) -> ok.
 ensure_header_replicated_claims_match({Header, Payload}) ->
     F = fun (K, V, _) ->
                 case maps:is_key(K, Header) of
@@ -239,54 +239,54 @@ ensure_header_replicated_claims_match({Header, Payload}) ->
                            true -> throw({error, {invalid_claim, K, header_replicate_mismatch}})
                         end;
                     false ->
-                        skip
+                        ok
                 end
         end,
-    maps:fold(F, none, Payload).
+    maps:fold(F, ok, Payload).
 
--spec validate_claims(payload(), decode_options()) -> no_return().
+-spec validate_claims(payload(), decode_options()) -> ok.
 validate_claims(Payload, Options) ->
-    maps:fold(fun validate_claim/3, Options, Payload).
+    maps:fold(fun validate_claim/3, Options, Payload), ok.
 
--spec validate_claim(json:key(), json:value(), decode_options()) -> no_return().
+-spec validate_claim(json:key(), json:value(), decode_options()) -> term().
 validate_claim(aud, Values, Options) when is_list(Values)->
-    case map:is_key(aud, Options) of
+    case maps:is_key(aud, Options) of
         false ->
             throw({error, {invalid_claim, aud, mismatch}});
         true ->
             Aud = maps:get(aud, Options, inet:gethostname()),
             Match = fun(X) -> X =:= Aud end,
             case lists:any(Match, Values) of
-                true -> ok;
+                true -> Options;
                 false -> throw({error, {invalid_claim, aud, mismatch}})
             end
     end;
 validate_claim(aud, Value, Options) ->
-    case map:is_key(aud, Options) of
+    case maps:is_key(aud, Options) of
         false ->
             throw({error, {invalid_claim, aud, mismatch}});
         true ->
             Aud = maps:get(aud, Options, inet:gethostname()),
-            if Aud =:= Value -> ok;
+            if Aud =:= Value -> Options;
                true -> throw({error, {invalid_claim, aud, mismatch}})
             end
     end;
-validate_claim(exp, Expiration, _Options) ->
+validate_claim(exp, Expiration, Options) ->
     Now = erlang:system_time(),
-    if Expiration < Now -> ok;
+    if Expiration < Now -> Options;
        true -> throw({error, {invalid_claim, exp, not_valid_anymore}})
     end;
-validate_claim(nbf, NotBefore, _Options) ->
+validate_claim(nbf, NotBefore, Options) ->
     Now = erlang:system_time(),
-    if NotBefore > Now -> ok;
+    if NotBefore > Now -> Options;
        true -> throw({error, {invalid_claim, nbf, not_valid_yet}})
     end;
 validate_claim(K, V, Options) ->
-    case map:get(validate_claim, Options, none) of
-        none -> ok;
+    case maps:get(validate_claim, Options, none) of
+        none -> Options;
         Func ->
             case Func(K, V) of
-                ok -> ok;
+                ok -> Options;
                 {error, Reason} -> throw({error, {invalid_claim, K, Reason}})
             end
     end.

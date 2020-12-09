@@ -32,8 +32,8 @@ extract_pub_from_chain([]) ->
     none;
 extract_pub_from_chain(Chain) ->
     [Root | _] = Chain,
-    case public_key:pkix_path_validation(Root, [Chain], []) of
-        {ok, PublicKeyInfo} ->
+    case public_key:pkix_path_validation(Root, Chain, []) of
+        {ok, {PublicKeyInfo, _}} ->
             PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey;
         {error, _Reason} ->
             none
