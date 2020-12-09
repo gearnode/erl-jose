@@ -63,8 +63,9 @@
 -type numeric_date() :: integer().
 -type string_or_uri() :: binary() | uri:uri().
 
--type encode_options() :: #{header_claims := [atom() | binary()]}.
--type decode_options() :: map().
+-type encode_options() :: #{header_claims => [atom() | binary()]}.
+-type decode_options() :: #{aud => string_or_uri()}.
+
 
 -spec reserved_header_parameter_names() -> [jose:header_parameter_name()].
 reserved_header_parameter_names() ->
@@ -75,12 +76,11 @@ reserved_header_parameter_names() ->
 
 -spec encode_compact(jwt(), jose_jwa:alg(), jose_jwa:verify_key()) -> binary().
 encode_compact(JWT, Alg, PrivKey) ->
-    DefaultOptions = #{header_claims => []},
-    encode_compact(JWT, Alg, PrivKey, DefaultOptions).
+    encode_compact(JWT, Alg, PrivKey, #{}).
 
 -spec encode_compact(jwt(), jose_jwa:alg(), jose_jwa:verify_key(), encode_options()) -> binary().
 encode_compact({Header0, Payload0}, Alg, PrivKey, Options) ->
-    Header1 = case maps:get(header_claims, Options) of
+    Header1 = case maps:get(header_claims, Options, []) of
                   [] ->
                       Header0;
                   Claims ->
@@ -131,9 +131,7 @@ serialize_claim(Key, Value, Acc) ->
 
 -spec decode_compact(Token :: binary(), jose_jwa:alg(), public_key:private_key()) -> {ok, jwt()} | {error, term()}.
 decode_compact(Token, Alg, Key) ->
-    {ok, Hostname} = inet:gethostname(),
-    DefaultOptions = #{aud => Hostname},
-    decode_compact(Token, Alg, Key, DefaultOptions).
+    decode_compact(Token, Alg, Key, #{}).
 
 -spec decode_compact(Token :: binary(), jose_jwa:alg(), public_key:private_key(), decode_options())
             -> {ok, jwt()} | {error, term()}.
@@ -175,7 +173,7 @@ validate_claim(aud, Values, Options) when is_list(Values)->
         false ->
             throw({error, {invalid_claim, aud, mismatch}});
         true ->
-            Aud = maps:get(aud, Options),
+            Aud = maps:get(aud, Options, inet:gethostname()),
             Match = fun(X) -> X =:= Aud end,
             case lists:any(Match, Values) of
                 true -> ok;
@@ -187,7 +185,7 @@ validate_claim(aud, Value, Options) ->
         false ->
             throw({error, {invalid_claim, aud, mismatch}});
         true ->
-            Aud = maps:get(aud, Options),
+            Aud = maps:get(aud, Options, inet:gethostname()),
             if Aud =:= Value -> ok;
                true -> throw({error, {invalid_claim, aud, mismatch}})
             end
@@ -195,12 +193,12 @@ validate_claim(aud, Value, Options) ->
 validate_claim(exp, Expiration, _Options) ->
     Now = erlang:system_time(),
     if Expiration < Now -> ok;
-       true -> throw({error, {invalid_claim, exp, token_expired}})
+       true -> throw({error, {invalid_claim, exp, not_valid_anymore}})
     end;
 validate_claim(nbf, NotBefore, _Options) ->
     Now = erlang:system_time(),
     if NotBefore > Now -> ok;
-       true -> throw({error, {invalid_claim, nbf, token_not_available}})
+       true -> throw({error, {invalid_claim, nbf, not_valid_yet}})
     end;
 validate_claim(K, V, Options) ->
     case map:get(validate_claim, Options, none) of
