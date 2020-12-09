@@ -18,11 +18,14 @@
 
 -export([reserved_header_parameter_names/0,
          encode_compact/3,
-         encode_compact/4]).
+         encode_compact/4,
+         decode_compact/3,
+         decode_compact/4]).
 
 -export_type([jwt/0,
               header/0,
               payload/0,
+              numeric_date/0,
               string_or_uri/0,
               encode_options/0,
               decode_options/0]).
@@ -44,19 +47,20 @@
                     iss => string_or_uri(),
                     sub => string_or_uri(),
                     aud => [string_or_uri()] | string_or_uri(),
-                    exp => calendar:datetime(),
-                    nbf => calendar:datetime(),
-                    iat => calendar:datetime(),
+                    exp => numeric_date(),
+                    nbf => numeric_date(),
+                    iat => numeric_date(),
                     jti => binary()}.
 
 -type payload() :: #{iss => string_or_uri(),
                      sub => string_or_uri(),
                      aud => [string_or_uri()] | string_or_uri(),
-                     exp => calendar:datetime(),
-                     nbf => calendar:datetime(),
-                     iat => calendar:datetime(),
+                     exp => numeric_date(),
+                     nbf => numeric_date(),
+                     iat => numeric_date(),
                      jti => binary()}.
 
+-type numeric_date() :: integer().
 -type string_or_uri() :: binary() | uri:uri().
 
 -type encode_options() :: #{header_claims := [atom() | binary()]}.
@@ -106,18 +110,184 @@ serialize_claim(aud, Value, Acc) when is_binary(Value) ->
 serialize_claim(aud, Value0, Acc) ->
     Value = uri:serialize(Value0),
     Acc#{<<"aud">> => Value};
-serialize_claim(exp, Value0, Acc) ->
-    Value = calendar:datetime_to_gregorian_seconds(Value0) - ?EPOCH,
+serialize_claim(exp, Value, Acc) when is_integer(Value) ->
     Acc#{<<"exp">> => Value};
-serialize_claim(nbf, Value0, Acc) ->
-    Value = calendar:datetime_to_gregorian_seconds(Value0) - ?EPOCH,
+serialize_claim(exp, _, _) ->
+    erlang:error(exp_claim_invalid_value);
+serialize_claim(nbf, Value, Acc) when is_integer(Value) ->
     Acc#{<<"nbf">> => Value};
-serialize_claim(iat, Value0, Acc) ->
-    Value = calendar:datetime_to_gregorian_seconds(Value0) - ?EPOCH,
+serialize_claim(nbf, _, _) ->
+    erlang:error(nbf_claim_invalid_value);
+serialize_claim(iat, Value, Acc) when is_integer(Value) ->
     Acc#{<<"iat">> => Value};
+serialize_claim(iat, _, _) ->
+    erlang:error(iat_claim_invalid_value);
 serialize_claim(jti, Value, Acc) when is_binary(Value) ->
     Acc#{<<"jti">> => Value};
 serialize_claim(jti, _Value, _Acc) ->
     erlang:error(jti_claim_invalid_value);
 serialize_claim(Key, Value, Acc) ->
     Acc#{Key => Value}.
+
+-spec decode_compact(Token :: binary(), jose_jwa:alg(), public_key:private_key()) -> {ok, jwt()} | {error, term()}.
+decode_compact(Token, Alg, Key) ->
+    {ok, Hostname} = inet:gethostname(),
+    DefaultOptions = #{aud => Hostname},
+    decode_compact(Token, Alg, Key, DefaultOptions).
+
+-spec decode_compact(Token :: binary(), jose_jwa:alg(), public_key:private_key(), decode_options())
+            -> {ok, jwt()} | {error, term()}.
+decode_compact(Bin, Alg,Key, Options) ->
+    case binary:split(Bin, <<$.>>, [global]) of
+        [_,_,_] ->
+            case jose_jws:decode_compact(Bin, Alg, Key, Options) of
+                {ok, {Header0, Payload0}} ->
+                    case json:parse(Payload0) of
+                        {ok, Data} ->
+                            try
+                                Payload = maps:fold(fun parse_claim/3, #{}, Data),
+                                Header = maps:fold(fun parse_claim/3, #{}, Header0),
+                                ensure_header_replicated_claims_match({Header, Payload}),
+                                validate_claims(Payload, Options),
+                                {ok, {Header, Payload}}
+                            catch
+                                throw:{error, Reason} ->
+                                    {error, Reason}
+                            end;
+                        {error, Reason} ->
+                            {error, Reason}
+                    end;
+                {error, Reason} ->
+                    {error, Reason}
+            end;
+        [_,_,_,_,_] ->
+            {error, jwe_not_supported};
+        error ->
+            {error, invalid_format}
+    end.
+-spec validate_claims(payload(), decode_options()) -> no_return().
+validate_claims(Payload, Options) ->
+    maps:fold(fun validate_claim/3, Options, Payload).
+
+-spec validate_claim(json:key(), json:value(), decode_options()) -> no_return().
+validate_claim(aud, Values, Options) when is_list(Values)->
+    case map:is_key(aud, Options) of
+        false ->
+            throw({error, {invalid_claim, aud, mismatch}});
+        true ->
+            Aud = maps:get(aud, Options),
+            Match = fun(X) -> X =:= Aud end,
+            case lists:any(Match, Values) of
+                true -> ok;
+                false -> throw({error, {invalid_claim, aud, mismatch}})
+            end
+    end;
+validate_claim(aud, Value, Options) ->
+    case map:is_key(aud, Options) of
+        false ->
+            throw({error, {invalid_claim, aud, mismatch}});
+        true ->
+            Aud = maps:get(aud, Options),
+            if Aud =:= Value -> ok;
+               true -> throw({error, {invalid_claim, aud, mismatch}})
+            end
+    end;
+validate_claim(exp, Expiration, _Options) ->
+    Now = erlang:system_time(),
+    if Expiration < Now -> ok;
+       true -> throw({error, {invalid_claim, exp, token_expired}})
+    end;
+validate_claim(nbf, NotBefore, _Options) ->
+    Now = erlang:system_time(),
+    if NotBefore > Now -> ok;
+       true -> throw({error, {invalid_claim, nbf, token_not_available}})
+    end;
+validate_claim(K, V, Options) ->
+    case map:get(validate_claim, Options, none) of
+        none -> ok;
+        Func ->
+            case Func(K, V) of
+                ok -> ok;
+                {error, Reason} -> throw({error, {invalid_claim, K, Reason}})
+            end
+    end.
+
+-spec parse_claim(json:key(), json:value(), payload()) -> payload().
+parse_claim(<<"iss">>, Value0, Acc) when is_binary(Value0) ->
+    case parse_string_or_uri(Value0) of
+        {ok, Value} -> Acc#{iss => Value};
+        {error, Reason} -> throw({error, {invalid_claim, iss, Reason}})
+    end;
+parse_claim(<<"iss">>, _, _) ->
+    throw({error, {invalid_claim, iss, invalid_format}});
+parse_claim(<<"sub">>, Value0, Acc) when is_binary(Value0) ->
+    case parse_string_or_uri(Value0) of
+        {ok, Value} -> Acc#{sub => Value};
+        {error, Reason} -> throw({error, {invalid_claim, sub, Reason}})
+    end;
+parse_claim(<<"sub">>, _, _) ->
+    throw({error, {invalid_claim, sub, invalid_format}});
+parse_claim(<<"aud">>, Values0, Acc) when is_list(Values0) ->
+    F =
+        fun (Value0) ->
+                case parse_string_or_uri(Value0) of
+                    {ok, Value} ->
+                        Value;
+                    {error, Reason} ->
+                        throw({error, {invalid_claim, aud, Reason}})
+                end
+        end,
+    Values = lists:map(F, Values0),
+    Acc#{aud => Values};
+parse_claim(<<"aud">>, Value0, Acc) when is_binary(Value0) ->
+    case parse_string_or_uri(Value0) of
+        {ok, Value} -> Acc#{aud => Value};
+        {error, Reason} -> throw({error, {invalid_claim, aud, Reason}})
+    end;
+parse_claim(<<"aud">>, _, _) ->
+    throw({error, {invalid_claim, sub, invalid_format}});
+parse_claim(<<"exp">>, Value, Acc) when is_integer(Value) ->
+    Acc#{exp => Value};
+parse_claim(<<"exp">>, _, _) ->
+    throw({error, {invalid_claim, exp, invalid_format}});
+parse_claim(<<"nbf">>, Value, Acc) when is_integer(Value) ->
+    Acc#{nbf => Value};
+parse_claim(<<"nbf">>, _, _) ->
+    throw({error, {invalid_claim, exp, invalid_format}});
+parse_claim(<<"iat">>, Value, Acc) when is_integer(Value) ->
+    Acc#{iat => Value};
+parse_claim(<<"iat">>, _, _) ->
+    throw({error, {invalid_claim, nbf, invalid_format}});
+parse_claim(<<"jti">>, Value, Acc) when is_binary(Value) ->
+    Acc#{jti => Value};
+parse_claim(<<"jti">>, _, _) ->
+    throw({error, {invalid_claim, jti, invalid_format}});
+parse_claim(Key, Value, Acc) ->
+    Acc#{Key => Value}.
+
+-spec parse_string_or_uri(binary()) -> string_or_uri().
+parse_string_or_uri(Value0) when is_binary(Value0) ->
+    case binary:split(Value0, <<$:>>) of
+        [_, _] -> case uri:parse(Value0) of
+                      {ok, Value} -> {ok, Value};
+                      {error, Reason} -> {error, Reason}
+                  end;
+        [_] -> {ok, Value0}
+    end;
+parse_string_or_uri(_) ->
+    {error, invalid_format}.
+
+-spec ensure_header_replicated_claims_match(jwt()) -> no_return().
+ensure_header_replicated_claims_match({Header, Payload}) ->
+    F = fun (K, V, _) ->
+                case maps:is_key(K, Header) of
+                    true ->
+                        Value = maps:get(K, Header),
+                        if V =:= Value -> ok;
+                           true -> throw({error, {invalid_claim, K, header_replicate_mismatch}})
+                        end;
+                    false ->
+                        skip
+                end
+        end,
+    maps:fold(F, none, Payload).

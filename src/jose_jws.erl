@@ -17,7 +17,8 @@
 -export([reserved_header_parameter_names/0,
          encode_compact/3,
          encode_compact/4,
-         decode_compact/3]).
+         decode_compact/3,
+         decode_compact/4]).
 
 -export_type([header/0,
               typ/0,
@@ -47,6 +48,7 @@
 -type jws() :: {header(), payload()}.
 
 -type encode_options() :: map().
+-type decode_options() :: map().
 
 -type decode_error_reason() :: invalid_format
                              | {invalid_header, Key :: term(), Reason :: term()}
@@ -135,19 +137,28 @@ serialize_payload(#{b64 := false} = _Header, Payload) ->
 serialize_payload(_Header, Payload) ->
     jose_base64:encodeurl(Payload, #{padding => false}).
 
+
 -spec decode_compact(compact(), jose_jwa:alg(), [jose_jwa:verify_key()] | jose_jwa:verify_key()) ->
           {ok, jws()} | {error, decode_error_reason()}.
-decode_compact(Token, Alg, Key) when not is_list(Key) ->
-    decode_compact(Token, Alg, [Key]);
-decode_compact(Token, Alg, Keys0) ->
-    try
-        {P1, P2, P3} = parse_parts(Token),
-        Header = decode_header(P1),
-        Payload = decode_payload(Header, P2),
-        Signature = decode_signature(P3),
-        Message = <<P1/binary, $., P2/binary>>,
+decode_compact(Token, Alg, Key) ->
+    DefaultOptions = #{},
+    decode_compact(Token, Alg, Key, DefaultOptions).
 
-        CollectKeys = fun (A, B, C) -> collect_potential_verify_keys(A, B, C, Alg) end,
+-spec decode_compact(compact(), jose_jwa:alg(), [jose_jwa:verify_key()] | jose_jwa:verify_key(), decode_options()) ->
+          {ok, jws()} | {error, decode_error_reason()}.
+decode_compact(Token, Alg, Key, Options) when not is_list(Key) ->
+    decode_compact(Token, Alg, [Key], Options);
+decode_compact(Token, Alg, Keys0, _Options) ->
+    try
+        {Header0, Payload0, Signature0} = parse_parts(Token),
+        Header = decode_header(Header0),
+        Payload = decode_payload(Header, Payload0),
+        Signature = decode_signature(Signature0),
+        %% Message = <<(jose_base64:encodeurl(Header0, #{padding => false})), $.,
+        %%             (jose_base64:encodeurl(Payload0, #{padding => false}))>>,
+        Message = <<Header0/binary, $., Payload0/binary>>,
+
+        CollectKeys = fun (K, V, Acc) -> collect_potential_verify_keys(K, V, Acc, Alg) end,
         VerifySig = fun (Key) -> jose_jwa:verify(Message, Signature, Alg, Key) end,
 
         Keys = maps:fold(CollectKeys, Keys0, Header),
@@ -388,7 +399,7 @@ collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= es
         error ->
             Acc
     end;
-collect_potential_verify_keys(x5c, [], Acc, _Alg) ->
+collect_potential_verify_keys(x5c, [], Acc, _) ->
     Acc;
 collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= rs256;
                                                          Alg =:= rs384;
@@ -434,5 +445,5 @@ collect_potential_verify_keys(kid, KId, Acc, Alg) when Alg =:= es256;
         error ->
             Acc
     end;
-collect_potential_verify_keys(_Key, _Value, Acc, _Alg) ->
+collect_potential_verify_keys(_Key, _Value, Acc, _) ->
     Acc.
