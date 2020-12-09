@@ -132,15 +132,18 @@ generate_key(es512) ->
     {PubKey, PrivKey};
 generate_key(rs256) ->
     PrivKey = public_key:generate_key({rsa, 4096, 65537}),
-    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus, publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
+    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus,
+                             publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
     {PubKey, PrivKey};
 generate_key(rs384) ->
     PrivKey = public_key:generate_key({rsa, 4096, 65537}),
-    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus, publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
+    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus,
+                             publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
     {PubKey, PrivKey};
 generate_key(rs512) ->
     PrivKey = public_key:generate_key({rsa, 4096, 65537}),
-    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus, publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
+    PubKey = #'RSAPublicKey'{modulus=PrivKey#'RSAPrivateKey'.modulus,
+                             publicExponent=PrivKey#'RSAPrivateKey'.publicExponent},
     {PubKey, PrivKey};
 generate_key(_) ->
     error(unsupported_alg).
