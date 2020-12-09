@@ -69,7 +69,7 @@ compact format with non-base64url encoded payload can be done with:
 Header = #{alg => hs256, b64 => false, crit => [<<"b64">>]},
 Payload = <<"signed message not base64 encoded">>,
 Secret = <<"secret key">>,
-jose_jwa:encode_compact({Header, Payload}, hs256, Key).
+jose_jws:encode_compact({Header, Payload}, hs256, Key).
 ```
 
 ### JSON
@@ -124,7 +124,17 @@ Encode accepts following options:
 | header_claims | A list of JWT claims to merge in the header object. |
 
 ## Decode
-TODO
+Decode JWT can be done with:
+```erl
+Token = <<"...">>,
+{ok, JWT} = jose_jwt:decode_compact(Token, hs256, <<"secret key">>).
+```
+
+Decode accepts following options:
+| Option         | Description                                  |
+|----------------|----------------------------------------------|
+| aud            | The audience claim identifies the recipients |
+| validate_claim | A function to validate extra claims          |
 
 # Certificate store
 As described in the [decode section](#decode), the library understands and
