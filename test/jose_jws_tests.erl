@@ -16,6 +16,15 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+rsa_key_pair() ->
+    {ok, F1} = file:read_file("test/fixtures/test-rsa.key"),
+    [Entry] = public_key:pem_decode(F1),
+    Priv = public_key:pem_entry_decode(Entry),
+    {ok, F2} = file:read_file("test/fixtures/test-rsa.pub"),
+    [Entry2] = public_key:pem_decode(F2),
+    Pub = public_key:pem_entry_decode(Entry2),
+    {Pub, Priv}.
+
 encode_compact_with_none_test_() ->
     JWS = {#{alg => none}, <<"foobar">>},
     [?_assertEqual(<<"eyJhbGciOiJub25lIn0.Zm9vYmFy.">>,
@@ -36,7 +45,42 @@ encode_compact_with_hs512_test_() ->
     [?_assertEqual(<<"eyJhbGciOiJIUzUxMiJ9.Zm9vYmFy.devaiaGiy0YT3hn0R9R7J3zEOAJ_HxBLJAjeUeEQvi5wJ2qEDerB5W95ghoAzF3xGcRfM1r7VQ1xsj02fBwk0w">>,
                    jose_jws:encode_compact(JWS, hs512, <<"secret">>))].
 
-% TODO: RSA et ECDSA
+
+encode_compact_with_rs256_test_() ->
+    {_, Priv} = rsa_key_pair(),
+    JWS = {#{alg => rs256}, <<"foobar">>},
+    [?_assertEqual(<<"eyJhbGciOiJSUzI1NiJ9.Zm9vYmFy.fd1aA8O89RIsFFnM8rhZDXGkXjx6PPfcg1wtbQ-bheE_D_fci2-_JrGGJJaBAY6yaXVbE2_7a9kjgmCPrY3CGK7-uVuR7rkYMHoR0F1F6HzLLehCukqUs6q2cA8ULIGha2KlQekH78Rgbtpuf5xpfEUbG4SauTVP4HcSSgX-hdbEZfCIcSbmY6HUH2VkAO5IooCUbmuIz1ZOd32U4HvcwW87cLN7KNAy_XNbSx1ON-tPJwk_PJzEXX1f7ncEAv0FG1iw5lUKtSiZapfpJI1ryPN4fvI-nQty9fx9qhwxSqjOVq2IFQtIUVQxHAOF3mHUa7A31ealKAGziSNsYFKjww">>,
+                   jose_jws:encode_compact(JWS, rs256, Priv))].
+
+encode_compact_with_rs384_test_() ->
+    {_, Priv} = rsa_key_pair(),
+    JWS = {#{alg => rs384}, <<"foobar">>},
+    [?_assertEqual(<<"eyJhbGciOiJSUzM4NCJ9.Zm9vYmFy.cilcRSvoDRu1QknyqesNRa-HMydA-YCw_bYxOc6LFxYNZzeEDY1lmsmknUds2CALwqpJ1TD8U0N34ZBqAHBEHzSdpyD8lL3Ds-kvR65LWL7v89S2j1XsdnMUU0NpibsPXVKibbmOzqgyyX79Q5TQiFP_jYLY1ethgaMZl-R4Dvp0__nlosT6ckgOGxdI8K3iZvfg4Vkl5lYDc-LLhaJvfzXCq0JYeagilDyR9DkwTb9NDQbmolnuFrtbE_MC4VtNhezkXJ-MtSQjLkJ0WjVY6NDa_sF1318WD2THBeGq2WCfIcmBTOHZ-jYb_peyuDLuRsYS3IigRm1y0H86Gg7-8w">>,
+                   jose_jws:encode_compact(JWS, rs384, Priv))].
+
+encode_compact_with_rs512_test_() ->
+    {_, Priv} = rsa_key_pair(),
+    JWS = {#{alg => rs512}, <<"foobar">>},
+    [?_assertEqual(<<"eyJhbGciOiJSUzUxMiJ9.Zm9vYmFy.OE186axg9aZTNGK2vkzOqAHz8UeNx_uaaJj6sk3_82hYrV-5JvAocTeu6aawAfw9aw6PelLxQTHB22BnDHSbUT8fvRM4Hfqm3JKR6Tbcfp2NM2heuE2clcpRGlBqvDkRv4qv8b8X_A52otne1HdIJjPcfOrEKzqNgKRWO2J1Lx7ven_z5szqUMJS7ayKf1b2d0SRC48iVd6c8vebpxkKcazHl00ShTyvKMWQ-ztjBrjyeWQTvjjPPGFxXAX01VsN6nckBMN1KaINhF93re1Sy9q5kwjcqTiVDLBN5vAukV75HSdbHI4sq37qFB0p477J-_55sxU3m_mq9ZCL3xuigg">>,
+                   jose_jws:encode_compact(JWS, rs512, Priv))].
+
+%% encode_compact_with_es256_test_() ->
+%%     {_, Priv} = rsa_key_pair(),
+%%     JWS = {#{alg => es256}, <<"foobar">>},
+%%     [?_assertEqual(<<>>,
+%%                    jose_jws:encode_compact(JWS, es256, Priv))].
+
+%% encode_compact_with_es384_test_() ->
+%%     {_, Priv} = rsa_key_pair(),
+%%     JWS = {#{alg => es384}, <<"foobar">>},
+%%     [?_assertEqual(<<>>,
+%%                    jose_jws:encode_compact(JWS, es384, Priv))].
+
+%% encode_compact_with_es512_test_() ->
+%%     {_, Priv} = rsa_key_pair(),
+%%     JWS = {#{alg => es512}, <<"foobar">>},
+%%     [?_assertEqual(<<>>,
+%%                    jose_jws:encode_compact(JWS, es512, Priv))].
 
 encode_compact_with_unsupported_alg_test_() ->
     [?_assertException(error,
