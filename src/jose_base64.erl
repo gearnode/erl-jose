@@ -44,16 +44,20 @@ decodeurl(Bin, Options) ->
 -spec decodeurl(binary(), options(), binary()) -> {ok, binary()} | {error, term()}.
 decodeurl(<<>>, _Options, Acc) ->
     {ok, Acc};
-decodeurl(<<A:8, B:8>>, Options = #{padding := false}, Acc) ->
-    A1 = dec64url(A),
-    B1 = dec64url(B) bsr 4,
-    Data = <<A1:6, B1:2>>,
-    decodeurl(<<>>, Options, <<Acc/binary, Data/binary>>);
+decodeurl(<<_A:8, _B:8, _C:8, $=:8>>, _Options = #{padding := false}, _Acc) ->
+    {error, invalid_encoding};
+decodeurl(<<_A:8, _B:8, $=:8, $=:8>>, _Options = #{padding := false}, _Acc) ->
+    {error, invalid_encoding};
 decodeurl(<<A:8, B:8, C:8>>, Options =  #{padding := false}, Acc) ->
     A1 = dec64url(A),
     B1 = dec64url(B),
     C1 = dec64url(C) bsr 2,
     Data = <<A1:6, B1:6, C1:4>>,
+    decodeurl(<<>>, Options, <<Acc/binary, Data/binary>>);
+decodeurl(<<A:8, B:8>>, Options = #{padding := false}, Acc) ->
+    A1 = dec64url(A),
+    B1 = dec64url(B) bsr 4,
+    Data = <<A1:6, B1:2>>,
     decodeurl(<<>>, Options, <<Acc/binary, Data/binary>>);
 decodeurl(<<A:8, B:8, $=:8, $=:8>>, Options, Acc) ->
     A1 = dec64url(A),
@@ -107,16 +111,20 @@ decode(Bin, Options) ->
 -spec decode(binary(), options(), binary()) -> {ok, binary()} | {error, term()}.
 decode(<<>>, _Options, Acc) ->
     {ok, Acc};
-decode(<<A:8, B:8>>, Options = #{padding := false}, Acc) ->
-    A1 = dec64(A),
-    B1 = dec64(B) bsr 4,
-    Data = <<A1:6, B1:2>>,
-    decode(<<>>, Options, <<Acc/binary, Data/binary>>);
+decode(<<_A:8, _B:8, _C:8, $=:8>>, _Options = #{padding := false}, _Acc) ->
+    {error, invalid_encoding};
+decode(<<_A:8, _B:8, $=:8, $=:8>>, _Options = #{padding := false}, _Acc) ->
+    {error, invalid_encoding};
 decode(<<A:8, B:8, C:8>>, Options = #{padding := false}, Acc) ->
     A1 = dec64(A),
     B1 = dec64(B),
     C1 = dec64(C) bsr 2,
     Data = <<A1:6, B1:6, C1:4>>,
+    decode(<<>>, Options, <<Acc/binary, Data/binary>>);
+decode(<<A:8, B:8>>, Options = #{padding := false}, Acc) ->
+    A1 = dec64(A),
+    B1 = dec64(B) bsr 4,
+    Data = <<A1:6, B1:2>>,
     decode(<<>>, Options, <<Acc/binary, Data/binary>>);
 decode(<<A:8, B:8, $=:8, $=:8>>, Options, Acc) ->
     A1 = dec64(A),

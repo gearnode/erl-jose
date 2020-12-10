@@ -242,8 +242,10 @@ parse_header_parameter_name(<<"x5c">>, _Value, _Header) ->
     throw({error, {invalid_header, x5c, invalid_format}});
 parse_header_parameter_name(<<"x5t">>, Value, Header) when is_binary(Value) ->
     case jose_base64:decodeurl(Value) of
-        {ok, Thumbprint} ->
+        {ok, Thumbprint} when byte_size(Thumbprint) =:= 20 ->
             Header#{x5t => Thumbprint};
+        {ok, _} ->
+            throw({error, {invalid_header, x5t, invalid_format}});
         {error, Reason} ->
             throw({error, {invalid_header, x5t, Reason}})
     end;
@@ -251,8 +253,10 @@ parse_header_parameter_name(<<"x5t">>, _Value, _Header) ->
     throw({error, {invalid_header, x5t, invalid_format}});
 parse_header_parameter_name(<<"x5t#S256">>, Value, Header) when is_binary(Value) ->
     case jose_base64:decodeurl(Value) of
-        {ok, Thumbprint} ->
+        {ok, Thumbprint} when byte_size(Thumbprint) =:= 32 ->
             Header#{'x5t#S256' => Thumbprint};
+        {ok, _} ->
+            throw({error, {invalid_header, 'x5t#S256', invalid_format}});
         {error, Reason} ->
             throw({error, {invalid_header, 'x5t#S256', Reason}})
     end;
@@ -281,13 +285,19 @@ parse_header_parameter_name(<<"crit">>, [], _Header) ->
 parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
     ReservedParameterNames = reserved_header_parameter_names() ++
         jose_jwa:reserved_header_parameter_names(),
+    SupportedCrits = [<<"b64">>],
     F = fun
             (X) when is_binary(X) ->
                 case lists:member(X, ReservedParameterNames) of
                     true ->
                         throw({error, {invalid_header, crit, illegal_parameter_name}});
                     false ->
-                        X
+                        case lists:member(X, SupportedCrits) of
+                            true ->
+                                X;
+                            false ->
+                                throw({error, {invalid_header, crit, unsupported}})
+                        end
                 end;
             (_) ->
                 throw({error, {invalid_header, crit, invalid_format}})

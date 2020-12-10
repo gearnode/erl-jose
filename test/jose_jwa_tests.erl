@@ -16,6 +16,11 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+unsupported_alg_test_() ->
+    [?_assertException(error, unsupported_alg, jose_jwa:generate_key(foobar)),
+     ?_assertException(error, unsupported_alg, jose_jwa:sign(<<"foo">>, foobar, <<"secret">>)),
+     ?_assertException(error, unsupported_alg, jose_jwa:verify(<<"foo">>, <<>>, foobar, <<"secret">>))].
+
 jwa_test_() ->
      [fun encode_alg/0,
       fun decode_alg/0,
