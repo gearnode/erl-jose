@@ -25,6 +25,53 @@ rsa_key_pair() ->
     Pub = public_key:pem_entry_decode(Entry2),
     {Pub, Priv}.
 
+ec_key_pair() ->
+    {ok, F1} = file:read_file("test/fixtures/test-ecdsa.key"),
+    [Entry] = public_key:pem_decode(F1),
+    Priv = public_key:pem_entry_decode(Entry),
+    {ok, F2} = file:read_file("test/fixtures/test-ecdsa.pub"),
+    [Entry2] = public_key:pem_decode(F2),
+    Pub = public_key:pem_entry_decode(Entry2),
+    {Pub, Priv}.
+
+generate_media_types() ->
+    MediaTypes = [<<"text/plain">>, <<"application/json">>, <<"application/jwk+json">>,
+                  <<"application/jwk-set+json">>, <<"application/jwt">>, <<"text/xml">>],
+    [MT || {ok, MT} <- lists:map(fun jose_media_type:parse/1, MediaTypes)].
+
+generate_uri() ->
+    URIs = [<<"https://example.com">>, <<"http://example.com?bar">>, <<"https://www.frimin.fr/dns.html">>],
+    [URI || {ok, URI} <- lists:map(fun uri:parse/1, URIs)].
+
+generate_headers(Alg) ->
+    #{cert := Der, key := _Key} = public_key:pkix_test_root_cert("jose_test", []),
+    X5C = [public_key:pkix_decode_cert(Der, otp)],
+    X5T = crypto:hash(sha, Der),
+    X5T2 = crypto:hash(sha256, Der),
+
+    [#{alg => Alg, kid => KId, jku => JKU,
+       x5u => X5U, cty => Cty, typ => Typ,
+       b64 => B64, crit => [<<"b64">>],
+       x5c => X5C, x5t => X5T, 'x5t#S256' => X5T2, <<"foo">> => <<"bar">>} ||
+        KId <- [<<>>, <<"john.doe@example.com">>, <<"0ujsszwN8NRY24YaXiTIE2VWDTS">>],
+        Cty <- generate_media_types(),
+        Typ <- generate_media_types(),
+        JKU <- generate_uri(),
+        X5U <- generate_uri(),
+        B64 <- [true, false]].
+
+encode_decode_encode(Header, Payload, Alg, {Pub, Priv}) ->
+    fun() ->
+            Token = jose_jws:encode_compact({Header, Payload}, Alg, Priv),
+            ?assertEqual({ok, {Header, Payload}}, jose_jws:decode_compact(Token, Alg, Pub)),
+            ?assertEqual(Token, jose_jws:encode_compact({Header, Payload}, Alg, Priv))
+    end.
+
+decode_encode_properties_test_() ->
+    {Pub, Priv} = rsa_key_pair(),
+    Payload = <<"foobar">>,
+    [encode_decode_encode(Header, Payload, rs256, {Pub, Priv}) || Header <- generate_headers(rs256)].
+
 encode_compact_with_none_test_() ->
     JWS = {#{alg => none}, <<"foobar">>},
     [?_assertEqual(<<"eyJhbGciOiJub25lIn0.Zm9vYmFy.">>,
@@ -49,38 +96,20 @@ encode_compact_with_hs512_test_() ->
 encode_compact_with_rs256_test_() ->
     {_, Priv} = rsa_key_pair(),
     JWS = {#{alg => rs256}, <<"foobar">>},
-    [?_assertEqual(<<"eyJhbGciOiJSUzI1NiJ9.Zm9vYmFy.fd1aA8O89RIsFFnM8rhZDXGkXjx6PPfcg1wtbQ-bheE_D_fci2-_JrGGJJaBAY6yaXVbE2_7a9kjgmCPrY3CGK7-uVuR7rkYMHoR0F1F6HzLLehCukqUs6q2cA8ULIGha2KlQekH78Rgbtpuf5xpfEUbG4SauTVP4HcSSgX-hdbEZfCIcSbmY6HUH2VkAO5IooCUbmuIz1ZOd32U4HvcwW87cLN7KNAy_XNbSx1ON-tPJwk_PJzEXX1f7ncEAv0FG1iw5lUKtSiZapfpJI1ryPN4fvI-nQty9fx9qhwxSqjOVq2IFQtIUVQxHAOF3mHUa7A31ealKAGziSNsYFKjww">>,
+    [?_assertEqual(<<"eyJhbGciOiJSUzI1NiJ9.Zm9vYmFy.X5RR8RP5C99Cp-VcvNVA-6u9Cq1XSVuDGbFmqLSxBkTBGu1Lo861EGMUDnrohvC2APveVTOF63ZoqP42dxzMivBsql8Ih4Wkl4R0-NG82O2SxWk0opEA2BY7VWp-nPQQ9LslN2FkG-PzcXZoT4If7RPP6xbYoGbbT4Qau_pu32MuSajPVSQdwMX3w6bFhKnHNCC4WtHHuLXM31gvdWmc2Nm7nZ1fSgx1-4qd6xOH3slzLw4N4bNrr4kTwFO85oEmvic4Djo1fVnf5PJ9MP5C2gYvP3Lh8Vx4iCO2QyyQRqOiJ5RSGcvRosP23hJPYw2Mq8XASzNDX8G0FBGbjABitg">>,
                    jose_jws:encode_compact(JWS, rs256, Priv))].
 
 encode_compact_with_rs384_test_() ->
     {_, Priv} = rsa_key_pair(),
     JWS = {#{alg => rs384}, <<"foobar">>},
-    [?_assertEqual(<<"eyJhbGciOiJSUzM4NCJ9.Zm9vYmFy.cilcRSvoDRu1QknyqesNRa-HMydA-YCw_bYxOc6LFxYNZzeEDY1lmsmknUds2CALwqpJ1TD8U0N34ZBqAHBEHzSdpyD8lL3Ds-kvR65LWL7v89S2j1XsdnMUU0NpibsPXVKibbmOzqgyyX79Q5TQiFP_jYLY1ethgaMZl-R4Dvp0__nlosT6ckgOGxdI8K3iZvfg4Vkl5lYDc-LLhaJvfzXCq0JYeagilDyR9DkwTb9NDQbmolnuFrtbE_MC4VtNhezkXJ-MtSQjLkJ0WjVY6NDa_sF1318WD2THBeGq2WCfIcmBTOHZ-jYb_peyuDLuRsYS3IigRm1y0H86Gg7-8w">>,
+    [?_assertEqual(<<"eyJhbGciOiJSUzM4NCJ9.Zm9vYmFy.GiMuR-Rlbj2F1XUKH9sShH13as5E5HppJhNe_5axy0JgAKqz-X6sGzfUfUpWeBaHZiT_czH-j2ImUhXrEcWzlXVRKxm_9VlMuc1IbV7LELKPg1YHgqll4BiFzvSgp1BKCXz02sx-EnE_I9q8JeL-ni0j8XtRVcxz6BypNkbWy05sv-mbe7f8w8nFZwNQP1q2Fw8x98O2giA7r7dKGQkJG4ahra42ZPinTEbz2WEhViKQydY9znERq555omHdpg0NETANebjkdCByRpq8MZ26Z1KHPqsMBL5gtCl-oFi0j7V9Sru42JQpEf9ENtD6rKJF6l_9sVH1x9vrJbzGpmFLJQ">>,
                    jose_jws:encode_compact(JWS, rs384, Priv))].
 
 encode_compact_with_rs512_test_() ->
     {_, Priv} = rsa_key_pair(),
     JWS = {#{alg => rs512}, <<"foobar">>},
-    [?_assertEqual(<<"eyJhbGciOiJSUzUxMiJ9.Zm9vYmFy.OE186axg9aZTNGK2vkzOqAHz8UeNx_uaaJj6sk3_82hYrV-5JvAocTeu6aawAfw9aw6PelLxQTHB22BnDHSbUT8fvRM4Hfqm3JKR6Tbcfp2NM2heuE2clcpRGlBqvDkRv4qv8b8X_A52otne1HdIJjPcfOrEKzqNgKRWO2J1Lx7ven_z5szqUMJS7ayKf1b2d0SRC48iVd6c8vebpxkKcazHl00ShTyvKMWQ-ztjBrjyeWQTvjjPPGFxXAX01VsN6nckBMN1KaINhF93re1Sy9q5kwjcqTiVDLBN5vAukV75HSdbHI4sq37qFB0p477J-_55sxU3m_mq9ZCL3xuigg">>,
+    [?_assertEqual(<<"eyJhbGciOiJSUzUxMiJ9.Zm9vYmFy.hfbL0pmm2_0e6zPx5IOE-yl8uFM8BPwtU8T5sHP0SsqNM7RFrP6NlCRfXGSYPro2P_LAZRxk5reE9Hjme6b__Il4YZn93bK3x5kehdYFU7kz-jmAhHz1cj7-Wu7Pn3TT71_stQ3jtYGm215K-fSRYEAm4EsWfRb0xvih2Ij2qygri88izjB9f2y5PY4p6AW6HWBVoeFOK35J9aYS-xYzZqQBeP2CZtICd5Fger8iBe3TnVbeRF6adJVfZclUdG0B5WI8CcAcFrayHfpVHrPvWzISVql1EP-FzEgfDqVDs3uEH48suKLjGpbCa_MgRnZTVhHX2wK7AWvDmjlb7dTXpw">>,
                    jose_jws:encode_compact(JWS, rs512, Priv))].
-
-%% encode_compact_with_es256_test_() ->
-%%     {_, Priv} = rsa_key_pair(),
-%%     JWS = {#{alg => es256}, <<"foobar">>},
-%%     [?_assertEqual(<<>>,
-%%                    jose_jws:encode_compact(JWS, es256, Priv))].
-
-%% encode_compact_with_es384_test_() ->
-%%     {_, Priv} = rsa_key_pair(),
-%%     JWS = {#{alg => es384}, <<"foobar">>},
-%%     [?_assertEqual(<<>>,
-%%                    jose_jws:encode_compact(JWS, es384, Priv))].
-
-%% encode_compact_with_es512_test_() ->
-%%     {_, Priv} = rsa_key_pair(),
-%%     JWS = {#{alg => es512}, <<"foobar">>},
-%%     [?_assertEqual(<<>>,
-%%                    jose_jws:encode_compact(JWS, es512, Priv))].
 
 encode_compact_with_unsupported_alg_test_() ->
     [?_assertException(error,
@@ -89,45 +118,3 @@ encode_compact_with_unsupported_alg_test_() ->
      ?_assertException(error,
                        unsupported_alg,
                        jose_jws:encode_compact({#{alg => foobar}, <<"foobar">>}, hs256, <<"secret">>))].
-
-%% must({ok, Value}) ->
-%%     Value;
-%% must(_) ->
-%%     erlang:error("must failed").
-
-%% encode_decode({Header, Payload, Key}) ->
-%%     Token = jose_jws:encode_compact({Header, Payload}, hs256, Key),
-%%     ?assertMatch({ok, {_, _}}, jose_jws:decode_compact(Token, hs256, [<<"lol lol lol">>, Key])).
-
-%% encode_compact_test_() ->
-%%     Header0 = #{alg => hs256,
-%%                 jku => <<"https://example.com/jku">>,
-%%                 kid => <<"b978eb04-8548-4db6-978a-7854757beaf2">>,
-%%                 x5u => <<"https://example.com/x5u">>,
-%%                 x5t => <<"B5:AC:43:3B:BD:A8:56:49:9D:6B:E2:CF:05:87:F0:9F:96:2D:EC:1C">>,
-%%                 'x5t#S256' => <<"76:A3:DD:C6:F4:3A:EA:9B:27:7E:CB:7F:66:01:2F:D3:91:4C:9F:6E:74:9A:2B:D6:04:FD:F2:92:19:9D:04:35">>,
-%%                 typ => <<"application/JWS">>,
-%%                 cty => <<"application/json; charset=utf-8">>},
-%%     Header1 = #{alg => hs256,
-%%                 jku => must(uri:parse(<<"https://example.com/jku">>)),
-%%                 kid => <<"b978eb04-8548-4db6-978a-7854757beaf2">>,
-%%                 x5u => must(uri:parse(<<"https://example.com/x5u">>)),
-%%                 x5t => <<"B5:AC:43:3B:BD:A8:56:49:9D:6B:E2:CF:05:87:F0:9F:96:2D:EC:1C">>,
-%%                 'x5t#S256' => <<"76:A3:DD:C6:F4:3A:EA:9B:27:7E:CB:7F:66:01:2F:D3:91:4C:9F:6E:74:9A:2B:D6:04:FD:F2:92:19:9D:04:35">>,
-%%                 typ => must(jose_media_type:parse(<<"application/JWS">>)),
-%%                 cty => must(jose_media_type:parse(<<"application/json; charset=utf-8">>))},
-%%     Header2 = #{alg => hs256,
-%%                 jku => must(uri:parse(<<"https://example.com/jku">>)),
-%%                 kid => <<"b978eb04-8548-4db6-978a-7854757beaf2">>,
-%%                 x5u => must(uri:parse(<<"https://example.com/x5u">>)),
-%%                 x5t => <<"B5:AC:43:3B:BD:A8:56:49:9D:6B:E2:CF:05:87:F0:9F:96:2D:EC:1C">>,
-%%                 'x5t#S256' => <<"76:A3:DD:C6:F4:3A:EA:9B:27:7E:CB:7F:66:01:2F:D3:91:4C:9F:6E:74:9A:2B:D6:04:FD:F2:92:19:9D:04:35">>,
-%%                 typ => must(jose_media_type:parse(<<"application/JWS">>)),
-%%                 cty => must(jose_media_type:parse(<<"application/json; charset=utf-8">>)),
-%%                 crit => [<<"b64">>],
-%%                 b64 => false},
-%%     Payload = <<"{}">>,
-%%     Key = jose_jwa:generate_key(hs256),
-%%     [{with, {Header0, Payload, Key}, [fun encode_decode/1]},
-%%      {with, {Header1, Payload, Key}, [fun encode_decode/1]},
-%%      {with, {Header2, Payload, Key}, [fun encode_decode/1]}].
