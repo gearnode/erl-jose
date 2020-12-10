@@ -323,18 +323,10 @@ parse_x5c_header_parameter_name(_Value, _Acc) ->
     throw({error, {invalid_header, x5c, invalid_format}}).
 
 -spec decode_payload(header(), binary()) -> binary().
-decode_payload(#{b64 := false} = Header, Data) ->
-    Crit = maps:get(crit, Header, []),
-    case lists:member(<<"b64">>, Crit) of
-        true -> Data;
-        false -> throw({error, {invalid_payload, malformatted_payload}})
-    end;
 decode_payload(Header, Data) ->
-    Crit = maps:get(crit, Header, []),
-    case lists:member(<<"b64">>, Crit) of
+    case maps:get(b64, Header, true) of
+        false -> Data;
         true ->
-            throw({error, {invalid_payload, malformatted_payload}});
-        false ->
             case jose_base64:decodeurl(Data, #{padding => false}) of
                 {ok, Payload} -> Payload;
                 {error, Reason} -> throw({error, {invalid_payload, Reason}})
