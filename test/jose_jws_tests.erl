@@ -74,6 +74,7 @@ decode_compact_test_() ->
      fun decode_jws_with_invalid_crit_header/0,
      fun decode_jws_with_invalid_b64_header/0,
      fun decode_jws_with_header_duplicated_json_key/0,
+     fun decode_jws_with_bad_map_header/0,
      fun decode_jws_with_invalid_payload/0,
      fun decode_jws_with_invalid_signature/0,
      fun decode_jws_with_invalid_non_base64_payload/0,
@@ -185,6 +186,10 @@ decode_jws_with_invalid_b64_header() ->
 decode_jws_with_header_duplicated_json_key() ->
     ?assertEqual({error, {invalid_header, #{position => {1,16}, reason => {duplicate_key, <<"alg">>}}}},
                  jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsImFsZyI6Im5vbmUifQ.e30.">>, none, <<>>)).
+
+decode_jws_with_bad_map_header() ->
+    ?assertEqual({error, {invalid_header, invalid_format}},
+                 jose_jws:decode_compact(<<"ImhlbGxvIg.e30.">>, none, <<>>)).
 
 decode_jws_with_invalid_payload() ->
     ?assertMatch({error, {invalid_payload, {invalid_base64_char, _}}},

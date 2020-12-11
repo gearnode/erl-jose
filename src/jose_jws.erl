@@ -193,8 +193,10 @@ decode_header(Data0) ->
 -spec parse_header_object(binary()) -> header().
 parse_header_object(Data) ->
     case json:parse(Data, #{duplicate_key_handling => error}) of
-        {ok, Header} ->
+        {ok, Header} when is_map(Header) ->
             parse_header_parameter_names(Header);
+        {ok, _} ->
+            throw({error, {invalid_header, invalid_format}});
         {error, Reason} ->
             throw({error, {invalid_header, Reason}})
     end.
