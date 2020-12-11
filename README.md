@@ -8,9 +8,9 @@ This repository contains Erlang implementation of [RFC
 
 # Motivation
 Existing JOSE implementations do not understand and process many header names
-and bind C libraries, making release portability header. This library can
-understand and process almost all specified header names and do not use any C
-binding.
+and bind C libraries, making Erlang release portability harder. This library
+can understand and process almost all specified header names and do not use
+any C binding.
 
 # Build
 You can build the library with:
