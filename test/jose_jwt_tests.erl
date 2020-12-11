@@ -31,8 +31,8 @@ decode_compact_with_jws_envelop_test_() ->
      fun decode_compact_in_jws_envelop_with_invalid_payload/0,
      fun decode_compact_in_jws_envelop_with_payload_duplicated_json_key/0,
      fun decode_compact_in_jws_envelop_with_bad_map_payload/0,
-     fun decode_compact_in_jws_enevlop_with_mismatch_header_replicated_claims/0,
-     fun decode_compact_in_jws_envelop_with_invalid_utf8_encoding_payload/0].
+     fun decode_compact_in_jws_envelop_with_invalid_utf8_encoding_payload/0,
+     fun decode_compact_in_jws_enevlop_with_mismatch_header_replicated_claims/0].
 
 decode_compact_in_jws_envelop_with_invalid_format() ->
     ?assertEqual({error, invalid_format},
@@ -111,6 +111,10 @@ decode_compact_in_jws_envelop_with_bad_map_payload() ->
 decode_compact_in_jws_envelop_with_invalid_utf8_encoding_payload() ->
     ?assertEqual({error, {invalid_payload, #{position => {1,9}, reason => invalid_escape_sequence}}},
                  jose_jwt:decode_compact(<<"eyJhbGciOiJub25lIn0.eyJhbGciOiJceEUwXHg4MFx4ODAifQ.">>, none, <<>>)).
+
+decode_compact_in_jws_enevlop_with_mismatch_header_replicated_claims() ->
+    ?assertMatch({error, {invalid_claim, iat, header_replicate_mismatch}},
+                 jose_jwt:decode_compact(<<"eyJhbGciOiJub25lIiwiaWF0IjoxMjN9.eyJqdGkiOiJmb28iLCJpYXQiOjB9.">>, none, <<>>)).
 
 decode_compact_with_jwe_envelop_test_() ->
     [].
