@@ -17,3 +17,4 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 - Add JWS compact decode
 - Add JWS non base64 encoded payload
 - Add JWT encode
+- Add JWT decode
