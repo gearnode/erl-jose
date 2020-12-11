@@ -50,7 +50,7 @@ encode_decode_encode(Header, Payload) ->
     end.
 
 decode_encode_properties_test_() ->
-    Payloads = [<<>>, <<"hello world">>, <<"<metadata></metadata>">>],
+    Payloads = [<<>>, <<"hello world">>, <<"<metadata></metadata>">>, <<"\xE0\x80\x80">>],
     [encode_decode_encode(Header, P) || Header <- generate_headers(none), P <- Payloads].
 
 encode_compact_test_() ->
