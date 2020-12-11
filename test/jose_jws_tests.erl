@@ -119,7 +119,14 @@
 %%                        unsupported_alg,
 %%                        jose_jws:encode_compact({#{alg => foobar}, <<"foobar">>}, hs256, <<"secret">>))].
 
-decode_compact_jws_test_() ->
+encode_compact_test_() ->
+    [fun encode_compact_with_invalid_alg/0].
+
+encode_compact_with_invalid_alg() ->
+    ?assertException(error, unsupported_alg,
+                     jose_jws:encode_compact({#{alg => foobar}, <<"{}">>}, none, <<>>)).
+
+decode_compact_test_() ->
     [fun decode_jws_with_invalid_format/0,
      fun decode_jws_with_invalid_header_base64_encoding/0,
      fun decode_jws_with_invalid_alg_header/0,
@@ -132,7 +139,11 @@ decode_compact_jws_test_() ->
      fun decode_jws_with_invalid_typ_header/0,
      fun decode_jws_with_invalid_cty_header/0,
      fun decode_jws_with_invalid_crit_header/0,
-     fun decode_jws_with_invalid_b64_header/0].
+     fun decode_jws_with_invalid_b64_header/0,
+     fun decode_jws_with_invalid_payload/0,
+     fun decode_jws_with_invalid_signature/0,
+     fun decode_jws_with_invalid_non_base64_payload/0,
+     fun decode_jws_with_mismatch_alg/0].
 
 decode_jws_with_invalid_format() ->
     ?assertEqual({error, invalid_format},
@@ -143,6 +154,8 @@ decode_jws_with_invalid_format() ->
                  jose_jws:decode_compact(<<"foo.bar.baz.fiz">>, hs256, <<"secret">>)).
 
 decode_jws_with_invalid_header_base64_encoding() ->
+    ?assertMatch({error, {invalid_header, _}},
+                 jose_jws:decode_compact(<<"fo^^o.e30.">>, none, <<>>)),
     ?assertMatch({error, {invalid_header, _}},
                  jose_jws:decode_compact(<<"foobar.e30.">>, none, <<>>)),
     ?assertMatch({error, {invalid_header, invalid_encoding}},
@@ -234,3 +247,19 @@ decode_jws_with_invalid_crit_header() ->
 decode_jws_with_invalid_b64_header() ->
     ?assertMatch({error, {invalid_header, b64, invalid_format}},
                  jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsImI2NCI6ImZvbyJ9.e30.">>, none, <<>>)).
+
+decode_jws_with_invalid_payload() ->
+    ?assertMatch({error, {invalid_payload, {invalid_base64_char, _}}},
+                 jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiJ9.fo^^o.">>, none, <<>>)).
+
+decode_jws_with_invalid_signature() ->
+    ?assertMatch({error, {invalid_signature, {invalid_base64_char, _}}},
+                 jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiJ9.e30.f^^o">>, none, <<>>)).
+
+decode_jws_with_invalid_non_base64_payload() ->
+    ?assertMatch({error, invalid_format},
+                 jose_jws:decode_compact(<<"eyJiNjQiOmZhbHNlLCJhbGciOiJub25lIn0.a.b.">>, none, <<>>)).
+
+decode_jws_with_mismatch_alg() ->
+    ?assertMatch({error, alg_mismatch},
+                 jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiJ9.e30.">>, none, <<>>)).

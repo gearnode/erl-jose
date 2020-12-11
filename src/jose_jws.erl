@@ -154,6 +154,7 @@ decode_compact(Token, Alg, Keys0, _Options) ->
         Header = decode_header(Header0),
         Payload = decode_payload(Header, Payload0),
         Signature = decode_signature(Signature0),
+        ensure_alg_match(maps:get(alg, Header), Alg),
         %% Message = <<(jose_base64:encodeurl(Header0, #{padding => false})), $.,
         %%             (jose_base64:encodeurl(Payload0, #{padding => false}))>>,
         Message = <<Header0/binary, $., Payload0/binary>>,
@@ -350,6 +351,12 @@ decode_signature(Data) ->
             Signature;
         {error, Reason} ->
             throw({error, {invalid_signature, Reason}})
+    end.
+
+-spec ensure_alg_match(jose_jwa:alg(), jose_jwa:alg()) -> ok.
+ensure_alg_match(TokenAlg, Alg) ->
+    if TokenAlg =:= Alg -> ok;
+       true -> throw({error, alg_mismatch})
     end.
 
 -spec collect_potential_verify_keys(atom(), term(), [jose_jwa:verify_key()], jose_jwa:alg()) -> [jose_jwa:verify_key()].
