@@ -177,6 +177,8 @@ sign(_, _, _) ->
       Key :: hmac_key() | public_key:public_key().
 verify(_Value, Signature, none, <<>>) ->
     Signature =:= <<>>;
+verify(_Value, _Signature, none, _) ->
+    false;
 verify(Value, Signature, hs256, Key) ->
     Signature =:= sign(Value, hs256, Key);
 verify(Value, Signature, hs384, Key) ->

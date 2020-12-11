@@ -140,8 +140,8 @@ decode_compact(Bin, Alg,Key, Options) ->
         [_,_,_] ->
             case jose_jws:decode_compact(Bin, Alg, Key, Options) of
                 {ok, {Header0, Payload0}} ->
-                    case json:parse(Payload0) of
-                        {ok, Data} ->
+                    case json:parse(Payload0, #{duplicate_key_handling => error}) of
+                        {ok, Data} when is_map(Data) ->
                             try
                                 Payload = maps:fold(fun parse_claim/3, #{}, Data),
                                 Header = maps:fold(fun parse_claim/3, #{}, Header0),
@@ -152,8 +152,10 @@ decode_compact(Bin, Alg,Key, Options) ->
                                 throw:{error, Reason} ->
                                     {error, Reason}
                             end;
+                        {ok, _} ->
+                            {error, {invalid_payload, invalid_format}};
                         {error, Reason} ->
-                            {error, Reason}
+                            {error, {invalid_payload, Reason}}
                     end;
                 {error, Reason} ->
                     {error, Reason}
@@ -197,7 +199,7 @@ parse_claim(<<"aud">>, Value0, Acc) when is_binary(Value0) ->
         {error, Reason} -> throw({error, {invalid_claim, aud, Reason}})
     end;
 parse_claim(<<"aud">>, _, _) ->
-    throw({error, {invalid_claim, sub, invalid_format}});
+    throw({error, {invalid_claim, aud, invalid_format}});
 parse_claim(<<"exp">>, Value, Acc) when is_integer(Value) ->
     Acc#{exp => Value};
 parse_claim(<<"exp">>, _, _) ->
@@ -205,11 +207,11 @@ parse_claim(<<"exp">>, _, _) ->
 parse_claim(<<"nbf">>, Value, Acc) when is_integer(Value) ->
     Acc#{nbf => Value};
 parse_claim(<<"nbf">>, _, _) ->
-    throw({error, {invalid_claim, exp, invalid_format}});
+    throw({error, {invalid_claim, nbf, invalid_format}});
 parse_claim(<<"iat">>, Value, Acc) when is_integer(Value) ->
     Acc#{iat => Value};
 parse_claim(<<"iat">>, _, _) ->
-    throw({error, {invalid_claim, nbf, invalid_format}});
+    throw({error, {invalid_claim, iat, invalid_format}});
 parse_claim(<<"jti">>, Value, Acc) when is_binary(Value) ->
     Acc#{jti => Value};
 parse_claim(<<"jti">>, _, _) ->
@@ -250,30 +252,20 @@ validate_claims(Payload, Options) ->
 
 -spec validate_claim(json:key(), json:value(), decode_options()) -> term().
 validate_claim(aud, Values, Options) when is_list(Values)->
-    case maps:is_key(aud, Options) of
-        false ->
-            throw({error, {invalid_claim, aud, mismatch}});
-        true ->
-            Aud = maps:get(aud, Options, inet:gethostname()),
-            Match = fun(X) -> X =:= Aud end,
-            case lists:any(Match, Values) of
-                true -> Options;
-                false -> throw({error, {invalid_claim, aud, mismatch}})
-            end
+    Aud = maps:get(aud, Options, inet:gethostname()),
+    Match = fun(X) -> X =:= Aud end,
+    case lists:any(Match, Values) of
+        true -> Options;
+        false -> throw({error, {invalid_claim, aud, mismatch}})
     end;
 validate_claim(aud, Value, Options) ->
-    case maps:is_key(aud, Options) of
-        false ->
-            throw({error, {invalid_claim, aud, mismatch}});
-        true ->
-            Aud = maps:get(aud, Options, inet:gethostname()),
-            if Aud =:= Value -> Options;
-               true -> throw({error, {invalid_claim, aud, mismatch}})
-            end
+    Aud = maps:get(aud, Options, inet:gethostname()),
+    if Aud =:= Value -> Options;
+       true -> throw({error, {invalid_claim, aud, mismatch}})
     end;
 validate_claim(exp, Expiration, Options) ->
     Now = erlang:system_time(),
-    if Expiration < Now -> Options;
+    if Expiration > Now -> Options;
        true -> throw({error, {invalid_claim, exp, not_valid_anymore}})
     end;
 validate_claim(nbf, NotBefore, Options) ->

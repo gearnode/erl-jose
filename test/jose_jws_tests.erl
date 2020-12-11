@@ -45,7 +45,7 @@ generate_headers(Alg) ->
 encode_decode_encode(Header, Payload) ->
     fun() ->
             Token = jose_jws:encode_compact({Header, Payload}, none, <<>>),
-            ?assertEqual({ok, {Header, Payload}}, jose_jws:decode_compact(Token, none, <<>>)),
+            ?assertEqual({ok, {Header, Payload}}, jose_jws:decode_compact(Token, none, [<<"foo">>, <<>>, <<"bar">>])),
             ?assertEqual(Token, jose_jws:encode_compact({Header, Payload}, none, <<>>))
     end.
 
