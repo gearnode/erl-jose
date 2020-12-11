@@ -50,7 +50,8 @@ encode_decode_encode(Header, Payload) ->
     end.
 
 decode_encode_properties_test_() ->
-    [encode_decode_encode(Header, <<"hello world">>) || Header <- generate_headers(none)].
+    Payloads = [<<>>, <<"hello world">>],
+    [encode_decode_encode(Header, P) || Header <- generate_headers(none), P <- Payloads].
 
 encode_compact_test_() ->
     [fun encode_compact_with_invalid_alg/0].
