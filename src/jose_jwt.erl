@@ -264,13 +264,13 @@ validate_claim(aud, Value, Options) ->
        true -> throw({error, {invalid_claim, aud, mismatch}})
     end;
 validate_claim(exp, Expiration, Options) ->
-    Now = erlang:system_time(),
+    Now = erlang:system_time(second),
     if Expiration > Now -> Options;
        true -> throw({error, {invalid_claim, exp, not_valid_anymore}})
     end;
 validate_claim(nbf, NotBefore, Options) ->
-    Now = erlang:system_time(),
-    if NotBefore > Now -> Options;
+    Now = erlang:system_time(second),
+    if NotBefore < Now -> Options;
        true -> throw({error, {invalid_claim, nbf, not_valid_yet}})
     end;
 validate_claim(K, V, Options) ->

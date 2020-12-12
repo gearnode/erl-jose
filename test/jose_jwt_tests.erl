@@ -16,6 +16,33 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+generate_string_and_uri() ->
+    URIs = [<<"https://example.com">>, <<"http://example.com?bar">>, <<"https://www.frimin.fr/dns.html">>],
+    [URI || {ok, URI} <- lists:map(fun uri:parse/1, URIs)] ++ [<<"foo">>, <<"hello world">>].
+
+generate_payloads() ->
+    [#{iss => ISS, sub => SUB, aud => Aud, exp => EXP, nbf => NBF, iat => IAT, jti => JTI} ||
+        ISS <- generate_string_and_uri(),
+        SUB <- generate_string_and_uri(),
+        Aud <- generate_string_and_uri(),
+        EXP <- [32533528770, 32512447170, 32513051970],
+        NBF <- [0, 100, 2000],
+        IAT <- [1607772016, 1607772030, 1589282430],
+        JTI <- [<<"https://example.com">>, <<"{}">>, <<"foo bar">>]].
+
+compact_encode_decode_encode(Header, Payload) ->
+    fun() ->
+            Aud = maps:get(aud, Payload),
+            Token = jose_jwt:encode_compact({Header, Payload}, none, <<>>),
+            ?assertEqual({ok, {Header, Payload}}, jose_jwt:decode_compact(Token, none, [<<"foo">>, <<>>, <<"bar">>], #{aud => Aud})),
+            ?assertEqual(Token, jose_jwt:encode_compact({Header, Payload}, none, <<>>))
+    end.
+
+
+compact_jws_properties_test_() ->
+    Header = #{alg => none},
+    [compact_encode_decode_encode(Header, Payload) || Payload <- generate_payloads()].
+
 decode_compact_with_jws_envelop_test_() ->
     [fun decode_compact_in_jws_envelop_with_invalid_format/0,
      fun decode_compact_in_jws_envelop_with_invalid_iss_claim/0,
