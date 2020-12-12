@@ -91,7 +91,17 @@ store](#certificate-store) and the [key store](#key-store).
 evaluated as not trustable to not allow JWS crafting by an attacker.
 
 ### Compact
-TODO
+Decode JWT can be done with:
+```erl
+Token = <<"...">>,
+{ok, JWS} = jose_jws:decode_compact(Token, hs256, <<"secret key">>).
+```
+
+Or with multiple keys with:
+```erl
+Token = <<"...">>,
+{ok, JWS} = jose_jws:decode_compact(Token, hs256, [<<"bad key">>, <<"secret key">>]).
+```
 
 ### JSON
 The JSON format is currently not supported.
