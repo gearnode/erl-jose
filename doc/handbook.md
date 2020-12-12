@@ -16,6 +16,9 @@ versions can be modified without backward compatibility at any time.
 These terms are used by this documentation:
 - **JSON Web Signature (JWS):** A data structure representing a digitally signed
   or MAC message.
+- **JSON Web Token (JWT):** A string representing a set of claims as a JSON
+  object that is encoded in a JWS or JWE, enabling the claims to be digitally
+  signed or MACed and/or encrypted.
 - **JOSE Header:** JSON object containing the parameters describing the
   cryptographic operations and parameters employed.
 - **JWS Payload:** The sequence of octets to be secured. The payload can contain
@@ -105,23 +108,23 @@ Encode JWT can be done with:
 ```erlang
 Key = jose_jwa:generate_key(hs256),
 Header = Header = #{alg => hs256, typ => <<"application/JWT">>},
-Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
-jose_jwt:encode_compact({Header, Payload}, hs256, Key).
+Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>},
+jose_jwt:encode_compact({Header, Payload}, hs256, Key, #{header_claims => [sub]}).
 ```
 
 The library understands and processes the `b64` header name. Encode JWT in
 with non-base64url encoded payload can be done with:
 ```erlang
 Key = jose_jwa:generate_key(hs256),
-Header = Header = #{alg => hs256, typ => <<"application/JWT">>, b64 => false, crit => [<<"b64">>]},
-Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => calendar:universal_time()},
+Header = #{alg => hs256, typ => <<"application/JWT">>, b64 => false, crit => [<<"b64">>]},
+Payload = #{sub => <<"1234567890">>, <<"name">> => <<"Bryan F.">>, iat => 1607772974},
 jose_jwt:encode_compact({Header, Payload}, hs256, Key).
 ```
 
 Encode accepts following options:
-| Option        | Description                                         |
-|---------------|-----------------------------------------------------|
-| header_claims | A list of JWT claims to merge in the header object. |
+| Option        | Description                                         | Default |
+|---------------|-----------------------------------------------------|---------|
+| header_claims | A list of JWT claims to merge in the header object. | []      |
 
 ## Decode
 Decode JWT can be done with:
@@ -130,11 +133,17 @@ Token = <<"...">>,
 {ok, JWT} = jose_jwt:decode_compact(Token, hs256, <<"secret key">>).
 ```
 
+Or with multiple keys with:
+```erl
+Token = <<"...">>,
+{ok, JWT} = jose_jwt:decode_compact(Token, hs256, [<<"bad key">>, <<"secret key">>]).
+```
+
 Decode accepts following options:
-| Option         | Description                                  |
-|----------------|----------------------------------------------|
-| aud            | The audience claim identifies the recipients |
-| validate_claim | A function to validate extra claims          |
+| Option         | Description                                  | Default           |
+|----------------|----------------------------------------------|-------------------|
+| aud            | The audience claim identifies the recipients | computer hostname |
+| validate_claim | A function to validate extra claims          | none              |
 
 # Certificate store
 As described in the [decode section](#decode), the library understands and
