@@ -74,14 +74,14 @@ encode_compact({Header, Payload}, Alg, Key, _Options) ->
     EncodedHeader = serialize_header(Header),
     EncodedPayload = serialize_payload(Header, Payload),
     Message = <<EncodedHeader/binary, $., EncodedPayload/binary>>,
-    Signature = jose_base64:encodeurl(jose_jwa:sign(Message, Alg, Key), #{padding => false}),
+    Signature = jose_base64url:encode(jose_jwa:sign(Message, Alg, Key), #{padding => false}),
     <<Message/binary, $., Signature/binary>>.
 
 -spec serialize_header(header()) -> binary().
 serialize_header(Header) ->
     Object = maps:fold(fun serialize_header_parameter_name/3, #{}, Header),
     Data = json:serialize(Object, #{return_binary => true}),
-    jose_base64:encodeurl(Data, #{padding => false}).
+    jose_base64url:encode(Data, #{padding => false}).
 
 -spec serialize_header_parameter_name(json:key(), term(), map()) -> #{json:key() => json:value()}.
 serialize_header_parameter_name(alg, Alg, Header) ->
@@ -111,10 +111,10 @@ serialize_header_parameter_name(x5c, CertChain, Header) ->
     Value = lists:map(F, CertChain),
     Header#{<<"x5c">> => Value};
 serialize_header_parameter_name(x5t, Fingerprint, Header) ->
-    Value = jose_base64:encodeurl(Fingerprint),
+    Value = jose_base64url:encode(Fingerprint),
     Header#{<<"x5t">> => Value};
 serialize_header_parameter_name('x5t#S256', Fingerprint, Header) ->
-    Value = jose_base64:encodeurl(Fingerprint),
+    Value = jose_base64url:encode(Fingerprint),
     Header#{<<"x5t#S256">> => Value};
 serialize_header_parameter_name(typ, Value, Header) when is_binary(Value) ->
     Header#{<<"typ">> => Value};
@@ -135,7 +135,7 @@ serialize_header_parameter_name(Key, Value, Header) ->
 serialize_payload(#{b64 := false} = _Header, Payload) ->
     Payload;
 serialize_payload(_Header, Payload) ->
-    jose_base64:encodeurl(Payload, #{padding => false}).
+    jose_base64url:encode(Payload, #{padding => false}).
 
 
 -spec decode_compact(compact(), jose_jwa:alg(), [jose_jwa:verify_key()] | jose_jwa:verify_key()) ->
@@ -183,7 +183,7 @@ parse_parts(Bin) ->
 
 -spec decode_header(binary()) -> header().
 decode_header(Data0) ->
-    case jose_base64:decodeurl(Data0, #{padding => false}) of
+    case jose_base64url:decode(Data0, #{padding => false}) of
         {ok, Data} ->
             parse_header_object(Data);
         {error, Reason} ->
@@ -244,7 +244,7 @@ parse_header_parameter_name(<<"x5c">>, Value, Header) when is_list(Value) ->
 parse_header_parameter_name(<<"x5c">>, _Value, _Header) ->
     throw({error, {invalid_header, x5c, invalid_format}});
 parse_header_parameter_name(<<"x5t">>, Value, Header) when is_binary(Value) ->
-    case jose_base64:decodeurl(Value) of
+    case jose_base64url:decode(Value) of
         {ok, Thumbprint} when byte_size(Thumbprint) =:= 20 ->
             Header#{x5t => Thumbprint};
         {ok, _} ->
@@ -255,7 +255,7 @@ parse_header_parameter_name(<<"x5t">>, Value, Header) when is_binary(Value) ->
 parse_header_parameter_name(<<"x5t">>, _Value, _Header) ->
     throw({error, {invalid_header, x5t, invalid_format}});
 parse_header_parameter_name(<<"x5t#S256">>, Value, Header) when is_binary(Value) ->
-    case jose_base64:decodeurl(Value) of
+    case jose_base64url:decode(Value) of
         {ok, Thumbprint} when byte_size(Thumbprint) =:= 32 ->
             Header#{'x5t#S256' => Thumbprint};
         {ok, _} ->
@@ -340,7 +340,7 @@ decode_payload(Header, Data) ->
     case maps:get(b64, Header, true) of
         false -> Data;
         true ->
-            case jose_base64:decodeurl(Data, #{padding => false}) of
+            case jose_base64url:decode(Data, #{padding => false}) of
                 {ok, Payload} -> Payload;
                 {error, Reason} -> throw({error, {invalid_payload, Reason}})
             end
@@ -348,7 +348,7 @@ decode_payload(Header, Data) ->
 
 -spec decode_signature(binary()) -> binary().
 decode_signature(Data) ->
-    case jose_base64:decodeurl(Data, #{padding => false}) of
+    case jose_base64url:decode(Data, #{padding => false}) of
         {ok, Signature} ->
             Signature;
         {error, Reason} ->
