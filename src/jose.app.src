@@ -1,5 +1,5 @@
 {application, jose,
- [{description, "An OTP library"},
+ [{description, "JOSE producer and consumer in Erlang."},
   {vsn, "git"},
   {registered, []},
   {mod, {jose_app, []}},
@@ -14,6 +14,6 @@
   {env,[]},
   {modules, []},
 
-  {licenses, ["MIT"]},
+  {licenses, ["ISC"]},
   {links, []}
  ]}.
