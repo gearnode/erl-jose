@@ -14,11 +14,9 @@
 
 -module(jose_jws).
 
--export([reserved_header_parameter_names/0,
-         encode_compact/3,
-         encode_compact/4,
-         decode_compact/3,
-         decode_compact/4]).
+-export([reserved_header_parameter_names/0, supported_crits/0,
+         encode_compact/3, encode_compact/4,
+         decode_compact/3, decode_compact/4]).
 
 -export_type([header/0,
               typ/0,
@@ -63,6 +61,11 @@ reserved_header_parameter_names() ->
   [<<"alg">>, <<"jku">>, <<"jwk">>, <<"kid">>,
    <<"x5u">>, <<"x5c">>, <<"x5t">>, <<"x5t#S256">>,
    <<"typ">>, <<"cty">>, <<"crit">>].
+
+-spec supported_crits() ->
+        [binary()].
+supported_crits() ->
+  [<<"b64">>].
 
 -spec encode_compact(jws(), jose_jwa:alg(), jose_jwa:sign_key()) ->
         compact().
@@ -300,14 +303,13 @@ parse_header_parameter_name(<<"crit">>, [], _Header) ->
 parse_header_parameter_name(<<"crit">>, Value, Header) when is_list(Value) ->
   ReservedParameterNames = reserved_header_parameter_names() ++
     jose_jwa:reserved_header_parameter_names(),
-  SupportedCrits = [<<"b64">>],
   F = fun
         (X) when is_binary(X) ->
           case lists:member(X, ReservedParameterNames) of
             true ->
               throw({error, {invalid_header, crit, illegal_parameter_name}});
             false ->
-              case lists:member(X, SupportedCrits) of
+              case lists:member(X, supported_crits()) of
                 true ->
                   X;
                 false ->
