@@ -17,7 +17,7 @@
 -include_lib("eunit/include/eunit.hrl").
 
 generate_media_types() ->
-  MediaTypes = [<<"text/plain">>, <<"application/json">>, <<"application/jwk+json">>,
+  MediaTypes = [<<"text/plain">>, <<"json">>, <<"jwk+json">>,
                 <<"application/jwk-set+json">>, <<"application/jwt">>, <<"text/xml">>],
   [MT || {ok, MT} <- lists:map(fun jose_media_type:parse/1, MediaTypes)].
 
@@ -155,13 +155,13 @@ decode_jws_with_invalid_x5ts256_header() ->
 
 decode_jws_with_invalid_typ_header() ->
   ?assertMatch({error, {invalid_header, typ, invalid_format}},
-               jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsInR5cCI6ImZvbyJ9.e30.">>, none, <<>>)),
+               jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsInR5cCI6ImV4YW1wbGU7cGFydD1cIjEvMlwiIn0.e30.">>, none, <<>>)),
   ?assertMatch({error, {invalid_header, typ, invalid_format}},
                jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsInR5cCI6MTIzfQ.e30.">>, none, <<>>)).
 
 decode_jws_with_invalid_cty_header() ->
   ?assertMatch({error, {invalid_header, cty, invalid_format}},
-               jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsImN0eSI6ImZvbyJ9.e30.">>, none, <<>>)),
+               jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsImN0eSI6ImV4YW1wbGU7cGFydD1cIjEvMlwiIn0.e30.">>, none, <<>>)),
   ?assertMatch({error, {invalid_header, cty, invalid_format}},
                jose_jws:decode_compact(<<"eyJhbGciOiJIUzI1NiIsImN0eSI6MTIzfQ.e30.">>, none, <<>>)).
 
