@@ -103,16 +103,15 @@ handle_call({select, KId}, _From, #{db := Tab} = State) ->
 
 handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
-  {noreply, State}.
+  {reply, unhandled, State}.
 
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
-  {noreply, State}.
+  {reply, unhandled, State}.
 
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
-  {noreply, State}.
-
+  {reply, unhandled, State}.
 
 -spec insert(ets:tid(), public_key:pem_entry()) ->
         ok | error.
