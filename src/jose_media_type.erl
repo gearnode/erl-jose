@@ -130,6 +130,8 @@ validate_naming(Bin) ->
   validate_naming_rest(Rest),
   ok.
 
+-spec validate_naming_first(byte()) ->
+        ok.
 validate_naming_first(Char)
   when Char >= $A, Char =< $Z;
        Char >= $a, Char =< $z;
