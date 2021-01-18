@@ -24,7 +24,11 @@ shell:
 	QUIET=1 rebar3 shell --config config/local.config
 
 test:
+ifdef MOD
+	QUIET=1 rebar3 eunit -m $(MOD)
+else
 	QUIET=1 rebar3 eunit
+endif
 
 cover:
 	QUIET=1 rebar3 eunit --cover
