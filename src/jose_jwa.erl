@@ -23,7 +23,7 @@
          decode_alg/1,
          generate_key/1,
          sign/3,
-         verify/4]).
+         is_valid/4]).
 
 -export_type([alg/0,
               hmac/0,
@@ -180,30 +180,30 @@ sign(Value, rs512, Key) ->
 sign(_, _, _) ->
   error(unsupported_alg).
 
--spec verify(binary(), binary(), alg(), Key) ->
+-spec is_valid(binary(), binary(), alg(), Key) ->
         boolean()
           when Key :: hmac_key() | public_key:public_key().
-verify(_Value, Signature, none, <<>>) ->
+is_valid(_Value, Signature, none, <<>>) ->
   Signature =:= <<>>;
-verify(_Value, _Signature, none, _) ->
+is_valid(_Value, _Signature, none, _) ->
   false;
-verify(Value, Signature, hs256, Key) ->
+is_valid(Value, Signature, hs256, Key) ->
   Signature =:= sign(Value, hs256, Key);
-verify(Value, Signature, hs384, Key) ->
+is_valid(Value, Signature, hs384, Key) ->
   Signature =:= sign(Value, hs384, Key);
-verify(Value, Signature, hs512, Key) ->
+is_valid(Value, Signature, hs512, Key) ->
   Signature =:= sign(Value, hs512, Key);
-verify(Value, Signature, es256, Key) ->
+is_valid(Value, Signature, es256, Key) ->
   public_key:verify(Value, sha256, Signature, Key);
-verify(Value, Signature, es384, Key) ->
+is_valid(Value, Signature, es384, Key) ->
   public_key:verify(Value, sha384, Signature, Key);
-verify(Value, Signature, es512, Key) ->
+is_valid(Value, Signature, es512, Key) ->
   public_key:verify(Value, sha512, Signature, Key);
-verify(Value, Signature, rs256, Key) ->
+is_valid(Value, Signature, rs256, Key) ->
   public_key:verify(Value, sha256, Signature, Key);
-verify(Value, Signature, rs384, Key) ->
+is_valid(Value, Signature, rs384, Key) ->
   public_key:verify(Value, sha384, Signature, Key);
-verify(Value, Signature, rs512, Key) ->
+is_valid(Value, Signature, rs512, Key) ->
   public_key:verify(Value, sha512, Signature, Key);
-verify(_, _, _, _) ->
+is_valid(_, _, _, _) ->
   error(unsupported_alg).

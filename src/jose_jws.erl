@@ -172,7 +172,7 @@ decode_compact(Token, Alg, Keys0, _Options) ->
                       collect_potential_verify_keys(K, V, Acc, Alg)
                   end,
     VerifySig = fun (Key) ->
-                    jose_jwa:verify(Message, Signature, Alg, Key)
+                    jose_jwa:is_valid(Message, Signature, Alg, Key)
                 end,
     Keys = maps:fold(CollectKeys, Keys0, Header),
     case lists:any(VerifySig, Keys) of
