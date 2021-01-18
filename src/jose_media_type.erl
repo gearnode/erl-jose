@@ -52,9 +52,17 @@ parse(Bin) ->
   try
     {Type, SubType} = parse_type(Type0),
     Parameters = parse_parameters(Parameters0),
-    MediaType = #{type => Type, subtype => SubType, parameters => Parameters},
-    {ok, MediaType}
 
+    case {Type, SubType, Parameters} of
+      {<<>>, _, Map} when map_size(Map) == 0 ->
+        {ok, #{type => <<"application">>, subtype => SubType,
+               parameters => Parameters}};
+      {<<>>, _, _} ->
+        {error, invalid_format};
+      {_, _, _} ->
+        {ok, #{type => Type, subtype => SubType,
+               parameters => Parameters}}
+    end
   catch
     throw:{error, Reason} ->
       {error, Reason}
@@ -68,8 +76,9 @@ parse_type(Bin) ->
       validate_naming(Type),
       validate_naming(SubType),
       {Type, SubType};
-    _Else ->
-      throw({error, invalid_format})
+    [SubType] ->
+      validate_naming(SubType),
+      {<<>>, SubType}
   end.
 
 -spec parse_parameters(binary()) ->

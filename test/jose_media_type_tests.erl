@@ -29,7 +29,14 @@ parse_test_() ->
    ?_assertEqual({ok, #{type => <<"application">>, subtype => <<"json">>,
                         parameters => #{}}},
                  jose_media_type:parse(
-                   <<"application/json;">>))].
+                   <<"application/json;">>)),
+   ?_assertEqual({ok, #{type => <<"application">>, subtype => <<"example">>,
+                       parameters => #{}}},
+                jose_media_type:parse(
+                 <<"example">>)),
+   ?_assertEqual({error, invalid_format},
+                jose_media_type:parse(
+                  <<"example;part=\"1/2\"">>))].
 
 serialize_test_() ->
   [?_assertEqual(<<"application/json;charset=\"UTF-8\";version=\"v1\"">>,
