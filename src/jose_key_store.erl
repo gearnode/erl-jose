@@ -107,11 +107,11 @@ handle_call(Msg, From, State) ->
 
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
-  {reply, unhandled, State}.
+  {noreply, State}.
 
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
-  {reply, unhandled, State}.
+  {noreply, State}.
 
 -spec insert(ets:tid(), public_key:pem_entry()) ->
         ok | error.
