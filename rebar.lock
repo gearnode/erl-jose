@@ -1,8 +1,8 @@
 [{<<"json">>,
   {git,"https://github.com/galdor/erl-json.git",
-       {ref,"7395612deaff4cfbd74e41b8e8396a581ecd92f7"}},
+       {ref,"6549a08a4ece8ed2fc2d8857cfe722546be5fec8"}},
   0},
  {<<"uri">>,
   {git,"https://github.com/galdor/erl-uri.git",
-       {ref,"9e9f27ec805bbb73ad00e60db51858b3b0411470"}},
+       {ref,"ede06d59c93d9fb72e2b6057d72a7218716c655f"}},
   0}].
