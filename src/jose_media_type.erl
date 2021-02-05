@@ -20,9 +20,11 @@
               attribute/0,
               value/0]).
 
--type media_type() :: #{type := binary(),
-                        subtype := binary(),
-                        parameters => #{attribute() => value()}}.
+-type media_type() ::
+        #{type := binary(),
+          subtype := binary(),
+          parameters =>
+            #{attribute() => value()}}.
 
 -type attribute() :: binary().
 -type value() :: binary().
