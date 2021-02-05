@@ -227,7 +227,7 @@ parse_parameter(<<"x5c">>, Values, JWK) when is_list(Values) ->
 parse_parameter(<<"x5c">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, x5c, invalid_format}});
 parse_parameter(<<"x5t">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value) of
+  case b64url:decode(Value) of
     {ok, Thumbprint} when byte_size(Thumbprint) =:= 20 ->
       JWK#{x5t => Thumbprint};
     {ok, _} ->
@@ -238,7 +238,7 @@ parse_parameter(<<"x5t">>, Value, JWK) when is_binary(Value) ->
 parse_parameter(<<"x5t">>, _Value, _Header) ->
   throw({error, {invalid_parameter, x5t, invalid_format}});
 parse_parameter(<<"x5t#S256">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value) of
+  case b64url:decode(Value) of
     {ok, Thumbprint} when byte_size(Thumbprint) =:= 32 ->
       JWK#{'x5t#S256' => Thumbprint};
     {ok, _} ->
@@ -268,7 +268,7 @@ parse_ec(<<"crv">>, Value, _JWK) when is_binary(Value) ->
 parse_ec(<<"crv">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, crv, invalid_format}});
 parse_ec(<<"x">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{x => Decoded};
     {error, Reason} ->
@@ -277,7 +277,7 @@ parse_ec(<<"x">>, Value, JWK) when is_binary(Value) ->
 parse_ec(<<"x">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, x, invalid_format}});
 parse_ec(<<"y">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{y => Decoded};
     {error, Reason} ->
@@ -286,7 +286,7 @@ parse_ec(<<"y">>, Value, JWK) when is_binary(Value) ->
 parse_ec(<<"y">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, y, invalid_format}});
 parse_ec(<<"d">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{d => Decoded};
     {error, Reason} ->
@@ -304,7 +304,7 @@ parse_oct(<<"kty">>, <<"oct">>, JWK) ->
 parse_oct(<<"kty">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, unsupported_kty}});
 parse_oct(<<"k">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{n => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -320,7 +320,7 @@ parse_rsa(<<"kty">>, <<"RSA">>, JWK) ->
 parse_rsa(<<"kty">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, unsupported_kty}});
 parse_rsa(<<"n">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{n => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -329,7 +329,7 @@ parse_rsa(<<"n">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"n">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, n, invalid_format}});
 parse_rsa(<<"e">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{e => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -338,7 +338,7 @@ parse_rsa(<<"e">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"e">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, e, invalid_format}});
 parse_rsa(<<"d">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{d => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -347,7 +347,7 @@ parse_rsa(<<"d">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"d">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, d, invalid_format}});
 parse_rsa(<<"p">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{p => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -356,7 +356,7 @@ parse_rsa(<<"p">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"p">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, p, invalid_format}});
 parse_rsa(<<"q">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false})  of
+  case b64url:decode(Value, [nopad])  of
     {ok, Decoded} ->
       JWK#{q => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -365,7 +365,7 @@ parse_rsa(<<"q">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"q">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, q, invalid_format}});
 parse_rsa(<<"dp">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{dp => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -374,7 +374,7 @@ parse_rsa(<<"dp">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"dp">>, _Value, _JWK) ->
   throw({error, {invalid_format, dp, invalid_format}});
 parse_rsa(<<"dq">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{dq => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -383,7 +383,7 @@ parse_rsa(<<"dq">>, Value, JWK) when is_binary(Value) ->
 parse_rsa(<<"dq">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, dq, invalid_format}});
 parse_rsa(<<"qi">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{qi => bytes_integer(Decoded)};
     {error, Reason} ->
@@ -396,7 +396,7 @@ parse_rsa(<<"oth">>, Values, JWK) when is_list(Values) ->
 parse_rsa(<<"oth">>, _Value, _JWK) ->
   throw({error, {invalid_parameter, oth, invalid_format}});
 parse_rsa(<<"k">>, Value, JWK) when is_binary(Value) ->
-  case jose_base64url:decode(Value, #{padding => false}) of
+  case b64url:decode(Value, [nopad]) of
     {ok, Decoded} ->
       JWK#{k => Decoded};
     {error, Reason} ->
@@ -442,7 +442,7 @@ parse_key_ops_parameter(_Value) ->
 parse_x5c_parameter([], Acc) ->
   lists:reverse(Acc);
 parse_x5c_parameter([H | T], Acc) when is_binary(H) ->
-  case jose_base64:decode(H) of
+  case b64:decode(H) of
     {ok, Data} ->
       Cert =
         try public_key:pkix_decode_cert(Data, otp)
