@@ -9,6 +9,11 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ### Added
 - Add `jose_jws:supported_crits/0` function.
 
+## Changed
+- Extract base64 encoding modules in dedicated library.
+- Rename `jose_jwa:verify/4` in `jose_jwa:is_valid/4`.
+- Reformat the codebase.
+
 ### Fixed
 - Fix media type without type returns an error.
 - Fix handling of unknown gen_server calls.
