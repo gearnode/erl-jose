@@ -132,7 +132,7 @@ generate_key(es384) ->
   PrivKey = public_key:generate_key({namedCurve, secp384r1}),
   PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp384r1}},
   {PubKey, PrivKey};
-generate_key(es512) ->
+generate_key(es521) ->
   PrivKey = public_key:generate_key({namedCurve, secp521r1}),
   PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp521r1}},
   {PubKey, PrivKey};
