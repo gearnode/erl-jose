@@ -35,7 +35,7 @@
 
 -type alg() :: hmac() | ecdsa() | rsa() | none.
 -type hmac() :: hs256 | hs384 | hs512.
--type ecdsa() :: es256 | es384 | es512.
+-type ecdsa() :: es256 | es384 | es521.
 -type rsa() :: rs256 | rs384 | rs512.
 
 -type hmac_key() :: binary().
@@ -55,7 +55,7 @@ reserved_header_parameter_names() ->
         [alg()].
 supported_algorithms() ->
   [hs256, hs384, hs512,
-   es256, es384, es512,
+   es256, es384, es521,
    rs256, rs384, rs512,
    none].
 
@@ -78,8 +78,8 @@ encode_alg(es256) ->
   <<"ES256">>;
 encode_alg(es384) ->
   <<"ES384">>;
-encode_alg(es512) ->
-  <<"ES512">>;
+encode_alg(es521) ->
+  <<"ES521">>;
 encode_alg(rs256) ->
   <<"RS256">>;
 encode_alg(rs384) ->
@@ -103,8 +103,8 @@ decode_alg(<<"ES256">>) ->
   {ok, es256};
 decode_alg(<<"ES384">>) ->
   {ok, es384};
-decode_alg(<<"ES512">>) ->
-  {ok, es512};
+decode_alg(<<"ES521">>) ->
+  {ok, es521};
 decode_alg(<<"RS256">>) ->
   {ok, rs256};
 decode_alg(<<"RS384">>) ->
@@ -132,7 +132,7 @@ generate_key(es384) ->
   PrivKey = public_key:generate_key({namedCurve, secp384r1}),
   PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp384r1}},
   {PubKey, PrivKey};
-generate_key(es512) ->
+generate_key(es521) ->
   PrivKey = public_key:generate_key({namedCurve, secp521r1}),
   PubKey = {#'ECPoint'{point=PrivKey#'ECPrivateKey'.publicKey}, {namedCurve, secp521r1}},
   {PubKey, PrivKey};
@@ -169,7 +169,7 @@ sign(Value, es256, Key) ->
   public_key:sign(Value, sha256, Key);
 sign(Value, es384, Key) ->
   public_key:sign(Value, sha384, Key);
-sign(Value, es512, Key) ->
+sign(Value, es521, Key) ->
   public_key:sign(Value, sha512, Key);
 sign(Value, rs256, Key) ->
   public_key:sign(Value, sha256, Key);
@@ -197,7 +197,7 @@ is_valid(Value, Signature, es256, Key) ->
   public_key:verify(Value, sha256, Signature, Key);
 is_valid(Value, Signature, es384, Key) ->
   public_key:verify(Value, sha384, Signature, Key);
-is_valid(Value, Signature, es512, Key) ->
+is_valid(Value, Signature, es521, Key) ->
   public_key:verify(Value, sha512, Signature, Key);
 is_valid(Value, Signature, rs256, Key) ->
   public_key:verify(Value, sha256, Signature, Key);

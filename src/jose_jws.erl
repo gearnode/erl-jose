@@ -389,7 +389,7 @@ collect_potential_verify_keys(x5t, Fingerprint, Acc, Alg) when Alg =:= rs256;
   end;
 collect_potential_verify_keys(x5t, Fingerprint, Acc, Alg) when Alg =:= es256;
                                                                Alg =:= es384;
-                                                               Alg =:= es512 ->
+                                                               Alg =:= es521 ->
   case jose_certificate_store:find(certificate_store_default, {sha1, Fingerprint}) of
     {ok, Cert} ->
       case jose_crypto:extract_pub_from_cert(Cert) of
@@ -413,7 +413,7 @@ collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= rs
   end;
 collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= es256;
                                                                       Alg =:= es384;
-                                                                      Alg =:= es512 ->
+                                                                      Alg =:= es521 ->
   case jose_certificate_store:find(certificate_store_default, {sha2, Fingerprint}) of
     {ok, Cert} ->
       case jose_crypto:extract_pub_from_cert(Cert) of
@@ -440,7 +440,7 @@ collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= rs256;
   end;
 collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= es256;
                                                          Alg =:= es384;
-                                                         Alg =:= es512 ->
+                                                         Alg =:= es521 ->
   [Root | _] = Chain,
   case jose_certificate_store:find(certificate_store_default, Root) of
     {ok, _} ->
@@ -462,7 +462,7 @@ collect_potential_verify_keys(kid, KId, Acc, Alg) when Alg =:= rs256;
   end;
 collect_potential_verify_keys(kid, KId, Acc, Alg) when Alg =:= es256;
                                                        Alg =:= es384;
-                                                       Alg =:= es512 ->
+                                                       Alg =:= es521 ->
   case jose_key_store:find(key_store_default, KId) of
     {ok, {{'ECPoint', _}, _} = PubKey} ->
       [PubKey | Acc];
