@@ -171,7 +171,6 @@ decode(Data, _Options) when is_map(Data) ->
       {error, Reason}
   end.
 
-
 %% https://tools.ietf.org/html/rfc7517#section-4.1
 decode(kty, Data, State) ->
   Kty =
