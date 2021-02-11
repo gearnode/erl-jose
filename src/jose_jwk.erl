@@ -285,7 +285,7 @@ decode(kid, Data, State) ->
 %% https://tools.ietf.org/html/rfc7517#section-4.6
 decode(x5u, Data, State) ->
   State1 =
-    case maps:find(<<"x5c">>, Data) of
+    case maps:find(<<"x5u">>, Data) of
       error ->
         State;
       {ok, Value} when is_binary(Value) ->
