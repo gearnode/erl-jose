@@ -51,10 +51,26 @@ add(Ref, Der) ->
 remove(Ref, Der) ->
   gen_server:call(Ref, {remove, Der}).
 
--spec find(gen_server_ref(), {sha1 | sha2, jose:certificate_thumbprint()}) ->
+%% TODO: fix dyalizer.
+%% TODO: better API to find certificate.
+-spec find(gen_server_ref(), term()) ->
         {ok, jose:certificate()} | error.
-find(Ref, Thumbprint) ->
-  gen_server:call(Ref, {find, Thumbprint}).
+find(Ref, Thumbprint) when byte_size(Thumbprint) =:= 20 ->
+  gen_server:call(Ref, {find, {sha1, Thumbprint}});
+find(Ref, Thumbprint) when byte_size(Thumbprint) =:= 32 ->
+  gen_server:call(Ref, {find, {sha2, Thumbprint}});
+find(Ref, {Sha, Thumbprint}) when Sha =:= sha1; Sha =:= sha256 ->
+  gen_server:call(Ref, {find, {Sha, Thumbprint}});
+find(Ref, Cert) ->
+  Der = public_key:pkix_encode('OTPCertificate', Cert, otp),
+  Sha1 = crypto:hash(sha, Der),
+  case find(Ref, Sha1) of
+    {ok, Cert} ->
+      {ok, Cert};
+    error ->
+      Sha2 = crypto:hash(sha256, Der),
+      find(Ref, Sha2)
+  end.
 
 -spec start_link(gen_server_name(), options()) ->
         {ok, pid()} | ignore | {error, term()}.

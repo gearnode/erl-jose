@@ -344,11 +344,19 @@ decode(x5c, Data, State) ->
         case public_key:pkix_path_validation(Root, Rest, []) of
           {error, {bad_cert, Reason}} ->
             throw({error,
-                   {invalid_parameter, Reason, x5c}});
+                   {invalid_parameter, {bad_cert, Reason}, x5c}});
           {ok, {_, _}} ->
-            %% TODO: ensure root certificate is trusted.
-            %% TODO: ensure x5t match with x5u certificate.
-            State#{x5c => [Root | Rest]}
+            case
+              jose_certificate_store:find(certificate_store_default, Root)
+            of
+              {ok, _} ->
+                %% TODO: ensure x5t match with x5u certificate.
+                State#{x5c => [Root | Rest]};
+              error ->
+                throw({error,
+                       {invalid_parameter,
+                        {bad_cert, untrusted_certificate}, x5c}})
+            end
         end;
       {ok, Value} ->
         throw({error,
