@@ -21,9 +21,7 @@
 -export([start_link/2,
          init/1,
          terminate/2,
-         handle_call/3,
-         handle_cast/2,
-         handle_info/2]).
+         handle_call/3, handle_cast/2, handle_info/2]).
 
 -export([add/2,
          remove/2,
