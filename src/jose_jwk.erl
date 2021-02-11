@@ -340,9 +340,15 @@ decode(x5c, Data, State) ->
                {invalid_parameter,
                 {invalid_syntax, []}, x5c}});
       {ok, Value} when is_list(Value) ->
-        CertificateChain = lists:foldl(F, [], Value),
-        %% TODO: ensure x5t match with x5u certificate.
-        State#{x5c => CertificateChain};
+        [Root | Rest] = F(Value, []),
+        case public_key:pkix_path_validation(Root, Rest, []) of
+          {error, {bad_cert, Reason}} ->
+            throw({error,
+                   {invalid_parameter, Reason, x5c}});
+          {ok, {_, _}} ->
+            %% TODO: ensure x5t match with x5u certificate.
+            State#{x5c => [Root | Rest]}
+        end;
       {ok, Value} ->
         throw({error,
                {invalid_parameter,
