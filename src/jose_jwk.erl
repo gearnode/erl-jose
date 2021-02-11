@@ -346,6 +346,7 @@ decode(x5c, Data, State) ->
             throw({error,
                    {invalid_parameter, Reason, x5c}});
           {ok, {_, _}} ->
+            %% TODO: ensure root certificate is trusted.
             %% TODO: ensure x5t match with x5u certificate.
             State#{x5c => [Root | Rest]}
         end;
