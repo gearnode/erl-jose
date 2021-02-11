@@ -275,7 +275,7 @@ decode(kid, Data, State) ->
       error ->
         State;
       {ok, Kid} when is_binary(Kid) ->
-        State#{kty => Kid};
+        State#{kid => Kid};
       {ok, Value} ->
         throw({error,
                {invalid_parameter,
