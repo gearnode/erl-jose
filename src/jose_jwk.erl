@@ -347,6 +347,7 @@ decode(x5c, Data, State) ->
                    {invalid_parameter, {bad_cert, Reason}, x5c}});
           {ok, {_, _}} ->
             case
+              %% TODO: Use option instead default certficate store
               jose_certificate_store:find(certificate_store_default, Root)
             of
               {ok, _} ->
