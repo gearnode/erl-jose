@@ -297,14 +297,19 @@ decode(x5u, Data, State) ->
             of
               {ok, {{_, 200, "OK"}, _, Bin}} ->
                 DecodedBin = public_key:pem_decode(Bin),
-                F1 = fun
-                       ({'Certificate', Der, not_encrypted}) ->
-                         public_key:pkix_decode_cert(Der, otp);
-                        (V) ->
-                         throw({error,
-                                {invalid_parameter, {V}, x5u}})
-                    end,
-                [Root | Rest] = lists:reverse(lists:map(F1, DecodedBin)),
+                Decode = fun
+                           ({'Certificate', Der, not_encrypted}) ->
+                             public_key:pkix_decode_cert(Der, otp);
+                           ({'Certificate', _, encrypted}) ->
+                             throw({error,
+                                    {invalid_parameter,
+                                     {bad_cert, encrypted_cert}, x5u}});
+                           (_) ->
+                             throw({error,
+                                    {invalid_parameter, bad_cert, x5u}})
+                         end,
+                %% TODO: raise an error when the decodedbin is an empty list.
+                [Root | Rest] = lists:reverse(lists:map(Decode, DecodedBin)),
                 case public_key:pkix_path_validation(Root, Rest, []) of
                   {error, {bad_cert, Reason}} ->
                     throw({error,
