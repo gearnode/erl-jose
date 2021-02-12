@@ -315,8 +315,17 @@ decode(x5u, Data, State) ->
                     throw({error,
                            {invalid_parameter, {bad_cert, Reason}, x5u}});
                   {ok, {_, _}} ->
-                    %% TODO: ensure certificate is trusted.
-                    State#{x5u => URI}
+                    case
+                      jose_certificate_store:find(
+                        certificate_store_default, Root)
+                    of
+                      {ok, _} ->
+                        State#{x5u => URI};
+                      error ->
+                        throw({error,
+                               {invalid_parameter,
+                                {bad_cert, untrusted_certificate}, x5u}})
+                    end
                 end;
               Value ->
                 %% TODO: enhancement error
