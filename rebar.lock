@@ -8,5 +8,5 @@
   0},
  {<<"uri">>,
   {git,"https://github.com/galdor/erl-uri.git",
-       {ref,"ede06d59c93d9fb72e2b6057d72a7218716c655f"}},
+       {ref,"aa029e922fa5ad08c0fa9f37968317916a0443b9"}},
   0}].
