@@ -59,7 +59,7 @@ find(Ref, Thumbprint) when byte_size(Thumbprint) =:= 20 ->
   gen_server:call(Ref, {find, {sha1, Thumbprint}});
 find(Ref, Thumbprint) when byte_size(Thumbprint) =:= 32 ->
   gen_server:call(Ref, {find, {sha2, Thumbprint}});
-find(Ref, {Sha, Thumbprint}) when Sha =:= sha1; Sha =:= sha256 ->
+find(Ref, {Sha, Thumbprint}) when Sha =:= sha1; Sha =:= sha2 ->
   gen_server:call(Ref, {find, {Sha, Thumbprint}});
 find(Ref, Cert) ->
   Der = public_key:pkix_encode('OTPCertificate', Cert, otp),
