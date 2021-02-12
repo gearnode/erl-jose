@@ -10,7 +10,9 @@
     public_key,
     uri,
     json,
-    b64
+    b64,
+    ssl,
+    inets
    ]},
   {env,[]},
   {modules, []},

@@ -291,8 +291,32 @@ decode(x5u, Data, State) ->
       {ok, Value} when is_binary(Value) ->
         case uri:parse(Value) of
           {ok, URI} ->
-            %% TODO fetch certificate.
-            State#{x5u => URI};
+            case
+              %% TODO: verifying service identity.
+              httpc:request(get, {Value, []}, [], [{body_format, binary}])
+            of
+              {ok, {{_, 200, "OK"}, _, Bin}} ->
+                DecodedBin = public_key:pem_decode(Bin),
+                F1 = fun
+                       ({'Certificate', Der, not_encrypted}) ->
+                         public_key:pkix_decode_cert(Der, otp);
+                        (V) ->
+                         throw({error,
+                                {invalid_parameter, {V}, x5u}})
+                    end,
+                [Root | Rest] = lists:reverse(lists:map(F1, DecodedBin)),
+                case public_key:pkix_path_validation(Root, Rest, []) of
+                  {error, {bad_cert, Reason}} ->
+                    throw({error,
+                           {invalid_parameter, {bad_cert, Reason}, x5u}});
+                  {ok, {_, _}} ->
+                    %% TODO: ensure certificate is trusted.
+                    State#{x5u => URI}
+                end;
+              Value ->
+                %% TODO: enhancement error
+                throw({error, Value})
+            end;
           {error, Reason} ->
             throw({error,
                    {invalid_parameter, Reason, x5u}})
@@ -347,6 +371,7 @@ decode(x5c, Data, State) ->
                    {invalid_parameter, {bad_cert, Reason}, x5c}});
           {ok, {_, _}} ->
             case
+              %% TODO: validate CRL
               %% TODO: Use option instead default certficate store
               jose_certificate_store:find(certificate_store_default, Root)
             of
