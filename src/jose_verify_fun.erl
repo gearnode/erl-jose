@@ -12,11 +12,11 @@
 %% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 %% IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
--module(jose_ssl).
+-module(jose_verify_fun).
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([verify_with_fingerprint/3]).
+-export([with_fingerprint/3]).
 
 -export_type([fingerprint_state/0]).
 
@@ -29,14 +29,14 @@
 -type user_state() :: term().
 -type fingerprint_state() :: term().
 
--spec verify_with_fingerprint(cert(), event(), fingerprint_state()) ->
+-spec with_fingerprint(cert(), event(), fingerprint_state()) ->
         {valid, user_state()}
           | {valid_peer, fingerprint_state()}
           | {fail, Reason :: term()}
           | {unknown, user_state()}.
-verify_with_fingerprint(_, {extension, _}, UserState) ->
+with_fingerprint(_, {extension, _}, UserState) ->
   {unknown, UserState};
-verify_with_fingerprint(Cert, _, UserState) ->
+with_fingerprint(Cert, _, UserState) ->
   case proplists:get_value(check_fingerprint, UserState) of
     undefined ->
       {valid, UserState};
