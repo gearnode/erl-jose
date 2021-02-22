@@ -41,7 +41,6 @@ verify_with_fingerprint(Cert, _, UserState) ->
     undefined ->
       {valid, UserState};
     {Algorithm, HexA} ->
-      {Algorithm, HexA} = Fingerprint,
       case hex:decode(HexA) of
         {error, Reason} ->
           {fail, {invalid_fingerprint, Reason}};
