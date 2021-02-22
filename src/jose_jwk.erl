@@ -288,120 +288,53 @@ decode(x5u, Data, State) ->
     case maps:find(<<"x5u">>, Data) of
       error ->
         State;
-      {ok, Value} when is_binary(Value) ->
-        case uri:parse(Value) of
-          {ok, URI} ->
-            case
-              %% TODO: verifying service identity.
-              httpc:request(get, {Value, []}, [], [{body_format, binary}])
-            of
-              {ok, {{_, 200, "OK"}, _, Bin}} ->
-                DecodedBin = public_key:pem_decode(Bin),
-                Decode = fun
-                           ({'Certificate', Der, not_encrypted}) ->
-                             public_key:pkix_decode_cert(Der, otp);
-                           ({'Certificate', _, encrypted}) ->
-                             throw({error,
-                                    {invalid_parameter,
-                                     {bad_cert, encrypted_cert}, x5u}});
-                           (_) ->
-                             throw({error,
-                                    {invalid_parameter, bad_cert, x5u}})
-                         end,
-                %% TODO: raise an error when the decodedbin is an empty list.
-                [Root | Rest] = lists:reverse(lists:map(Decode, DecodedBin)),
-                case public_key:pkix_path_validation(Root, Rest, []) of
-                  {error, {bad_cert, Reason}} ->
-                    throw({error,
-                           {invalid_parameter, {bad_cert, Reason}, x5u}});
-                  {ok, {_, _}} ->
-                    case
-                      jose_certificate_store:find(
-                        certificate_store_default, Root)
-                    of
-                      {ok, _} ->
-                        State#{x5u => URI};
-                      error ->
-                        throw({error,
-                               {invalid_parameter,
-                                {bad_cert, untrusted_certificate}, x5u}})
-                    end
-                end;
-              Value ->
-                %% TODO: enhancement error
-                throw({error, Value})
-            end;
-          {error, Reason} ->
-            throw({error,
-                   {invalid_parameter, Reason, x5u}})
-        end;
       {ok, Value} ->
-        throw({error,
-               {invalid_parameter,
-                {invalid_syntax, Value}, x5u}})
-    end,
-  decode(x5c, Data, State1);
-
-%% https://tools.ietf.org/html/rfc7517#section-4.7
-decode(x5c, Data, State) ->
-  %% TODO: extract this helper in the =jose_utils= module.
-  F = fun
-        Decode([], Acc) ->
-          Acc;
-        Decode([H | T], Acc) when is_binary(H) ->
-          case b64:decode(H) of
-            {ok, Der} ->
-              Certificate =
-                try
-                  public_key:pkix_decode_cert(Der, otp)
-                catch
-                  error:Reason ->
-                    throw({error,
-                           {invalid_paramater, Reason, x5c}})
-                end,
-              Decode(T, [Certificate | Acc]);
-            {error, Reason} ->
-              throw({error,
-                     {invalid_parameter, Reason, x5c}})
-          end;
-        Decode(Value, _Acc) ->
-          throw({error,
-                 {invalid_parameter,
-                  {invalid_syntax, Value}, x5c}})
-      end,
-  State1 =
-    case maps:find(<<"x5c">>, Data) of
-      error ->
-        State;
-      {ok, []} ->
-        throw({error,
-               {invalid_parameter,
-                {invalid_syntax, []}, x5c}});
-      {ok, Value} when is_list(Value) ->
-        [Root | Rest] = F(Value, []),
-        case public_key:pkix_path_validation(Root, Rest, []) of
-          {error, {bad_cert, Reason}} ->
-            throw({error,
-                   {invalid_parameter, {bad_cert, Reason}, x5c}});
-          {ok, {_, _}} ->
+        case jose_x5u:decode(Value) of
+          {ok, []} ->
+            State;
+          {ok, [Root | _] = Chain} ->
             case
-              %% TODO: validate CRL
               %% TODO: Use option instead default certficate store
               jose_certificate_store:find(certificate_store_default, Root)
             of
               {ok, _} ->
                 %% TODO: ensure x5t match with x5u certificate.
-                State#{x5c => [Root | Rest]};
+                State#{x5c => Chain};
               error ->
                 throw({error,
-                       {invalid_parameter,
-                        {bad_cert, untrusted_certificate}, x5c}})
-            end
-        end;
+                       {invalid_parameter, {bad_cert, untrusted_cert}, x5u}})
+            end;
+          {error, Reason} ->
+            throw({error, {invalid_parameter, Reason, x5c}})
+        end
+    end,
+  decode(x5c, Data, State1);
+
+%% https://tools.ietf.org/html/rfc7517#section-4.7
+decode(x5c, Data, State) ->
+  State1 =
+    case maps:find(<<"x5c">>, Data) of
+      error ->
+        State;
       {ok, Value} ->
-        throw({error,
-               {invalid_parameter,
-                {invalid_syntax, Value}, x5c}})
+        case jose_x5c:decode(Value) of
+          {ok, []} ->
+            State;
+          {ok, [Root | _] = Chain} ->
+            case
+              %% TODO: Use option instead default certficate store
+              jose_certificate_store:find(certificate_store_default, Root)
+            of
+              {ok, _} ->
+                %% TODO: ensure x5t match with x5u certificate.
+                State#{x5c => Chain};
+              error ->
+                throw({error,
+                       {invalid_parameter, {bad_cert, untrusted_cert}, x5c}})
+            end;
+          {error, Reason} ->
+            throw({error, {invalid_parameter, Reason, x5c}})
+        end
     end,
   decode(x5t, Data, State1);
 
@@ -411,20 +344,13 @@ decode(x5t, Data, State) ->
     case maps:find(<<"x5t">>, Data) of
       error ->
         State;
-      %% TODO: extract this helper in the =jose_utils= module.
-      {ok, Value} when is_binary(Value) ->
-        case b64url:decode(Value) of
-          {ok, Thumbprint} when byte_size(Thumbprint) =:= 20 ->
-            %% TODO: ensure x5t match with x5u or/and x5c certificates.
+      {ok, Value} ->
+        case jose_x5t:decode(Value) of
+          {ok, Thumbprint} ->
             State#{x5t => Thumbprint};
           {error, Reason} ->
-            throw({error,
-                   {invalid_parameter, Reason, x5t}})
-        end;
-      {ok, Value} ->
-        throw({error,
-               {invalid_parameter,
-                {invalid_syntax, Value}, x5t}})
+            throw({error, {invalid_parameter, Reason, x5t}})
+        end
     end,
   decode('x5t#S256', Data, State1);
 
@@ -434,21 +360,14 @@ decode('x5t#S256', Data, State) ->
     case maps:find(<<"x5t#S256">>, Data) of
       error ->
         State;
-      %% TODO: extract this helper in the =jose_utils= module.
-      {ok, Value} when is_binary(Value) ->
-        case b64url:decode(Value) of
-          {ok, Thumbprint} when byte_size(Thumbprint) =:= 32 ->
-            %% TODO: ensure x5t#S256 match with x5u or/and x5c certificates
-            %% and/or x5t thumbprint.
+      {ok, Value} ->
+        case jose_x5tS256:decode(Value) of
+          {ok, Thumbprint} ->
             State#{x5t => Thumbprint};
           {error, Reason} ->
             throw({error,
                    {invalid_parameter, Reason, 'x5t#S256'}})
-        end;
-      {ok, Value} ->
-        throw({error,
-               {invalid_parameter,
-                {invalid_syntax, Value}, 'x5t#S256'}})
+        end
     end,
   case maps:get(kty, State1) of
     oct ->
