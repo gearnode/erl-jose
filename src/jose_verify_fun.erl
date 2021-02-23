@@ -34,14 +34,16 @@
           | {valid_peer, fingerprint_state()}
           | {fail, Reason :: term()}
           | {unknown, user_state()}.
+verify_cert(_, {bad_cert, _} = Reason, _) ->
+  {fail, Reason};
 verify_cert(_, {extension, _}, UserState) ->
   {unknown, UserState};
-verify_cert(Cert, Event, UserState) ->
+verify_cert(_, valid, UserState) ->
+  {valid, UserState};
+verify_cert(Cert, valid_peer, UserState) ->
   case proplists:get_value(check_fingerprint, UserState) of
     undefined ->
-      %% When no options available, the function can't perform verification
-      %% this why we forward the latest event as result).
-      Event;
+      {fail, no_option};
     {Algorithm, HexA} ->
       case hex:decode(HexA) of
         {error, Reason} ->
@@ -50,7 +52,7 @@ verify_cert(Cert, Event, UserState) ->
           CertBin = public_key:pkix_encode('OTPCertificate', Cert, 'otp'),
           case crypto:hash(Algorithm, CertBin) of
             HexB ->
-              {valid, hex:encode(HexB, [uppercase])};
+              {valid_peer, hex:encode(HexB, [uppercase])};
             _ ->
               {fail, fingerprint_no_match}
           end
@@ -62,12 +64,16 @@ verify_cert(Cert, Event, UserState) ->
           | {valid_peer, fingerprint_state()}
           | {fail, Reason :: term()}
           | {unknown, user_state()}.
+verify_cert_pk(_, {bad_cert, _} = Reason, _) ->
+  {fail, Reason};
 verify_cert_pk(_, {extension, _}, UserState) ->
   {unknown, UserState};
-verify_cert_pk(Cert, Event, UserState) ->
+verify_cert_pk(_, valid, UserState) ->
+  {valid, UserState};
+verify_cert_pk(Cert, valid_peer, UserState) ->
   case proplists:get_value(check_pk, UserState) of
     invalid ->
-      Event;
+      {fail, no_option};
     {base64, Bin64} ->
       case b64:decode(Bin64) of
         {ok, PK} ->
@@ -80,7 +86,7 @@ verify_cert_pk(Cert, Event, UserState) ->
 
           if
             PK =:= Encoded ->
-              {valid, UserState};
+              {valid_peer, UserState};
             true ->
               {fail, PK}
           end;
