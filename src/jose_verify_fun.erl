@@ -16,7 +16,7 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([with_fingerprint/3]).
+-export([verify_cert/3, verify_cert_pk/3]).
 
 -export_type([fingerprint_state/0]).
 
@@ -29,17 +29,19 @@
 -type user_state() :: term().
 -type fingerprint_state() :: term().
 
--spec with_fingerprint(cert(), event(), fingerprint_state()) ->
+-spec verify_cert(cert(), event(), fingerprint_state()) ->
         {valid, user_state()}
           | {valid_peer, fingerprint_state()}
           | {fail, Reason :: term()}
           | {unknown, user_state()}.
-with_fingerprint(_, {extension, _}, UserState) ->
+verify_cert(_, {extension, _}, UserState) ->
   {unknown, UserState};
-with_fingerprint(Cert, _, UserState) ->
+verify_cert(Cert, Event, UserState) ->
   case proplists:get_value(check_fingerprint, UserState) of
     undefined ->
-      {valid, UserState};
+      %% When no options available, the function can't perform verification
+      %% this why we forward the latest event as result).
+      Event;
     {Algorithm, HexA} ->
       case hex:decode(HexA) of
         {error, Reason} ->
@@ -52,6 +54,38 @@ with_fingerprint(Cert, _, UserState) ->
             _ ->
               {fail, fingerprint_no_match}
           end
+      end
+  end.
+
+-spec verify_cert_pk(cert(), event(), fingerprint_state()) ->
+        {valid, user_state()}
+          | {valid_peer, fingerprint_state()}
+          | {fail, Reason :: term()}
+          | {unknown, user_state()}.
+verify_cert_pk(_, {extension, _}, UserState) ->
+  {unknown, UserState};
+verify_cert_pk(Cert, Event, UserState) ->
+  case proplists:get_value(check_pk, UserState) of
+    invalid ->
+      Event;
+    {base64, Bin64} ->
+      case b64:decode(Bin64) of
+        {ok, PK} ->
+          TBSCert = Cert#'OTPCertificate'.tbsCertificate,
+          PublicKeyInfo = TBSCert#'OTPTBSCertificate'.subjectPublicKeyInfo,
+          PublicKey =
+            PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
+          {'SubjectPublicKeyInfo', Encoded, not_encrypted} =
+            public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKey),
+
+          if
+            PK =:= Encoded ->
+              {valid, UserState};
+            true ->
+              {fail, PK}
+          end;
+        {error, Reason} ->
+          {fail, Reason}
       end
   end.
 
