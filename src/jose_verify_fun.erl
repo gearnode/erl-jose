@@ -16,7 +16,7 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([verify_cert/3, verify_cert_pk/3]).
+-export([verify_cert/3, verify_cert_pk/3, verify_hostname/3]).
 
 -export_type([fingerprint_state/0]).
 
@@ -95,3 +95,85 @@ verify_cert_pk(Cert, valid_peer, UserState) ->
       end
   end.
 
+-spec verify_hostname(cert(), event(), fingerprint_state()) ->
+        {valid, user_state()}
+          | {valid_peer, fingerprint_state()}
+          | {fail, Reason :: term()}
+          | {unknown, user_state()}.
+verify_hostname(_, {bad_cert, _} = Reason, _) ->
+  {fail, Reason};
+verify_hostname(_, {extension, _}, UserState) ->
+  {unknown, UserState};
+verify_hostname(_, valid, UserState) ->
+  {valid, UserState};
+verify_hostname(Cert, valid_peer, UserState) ->
+  CommonName = extract_cert_cn(Cert),
+  {valid_peer, UserState}.
+
+extract_cert_cn(Cert) ->
+  TBSCert = Cert#'OTPCertificate'.tbsCertificate,
+  {rdnSequence, Subject} = TBSCert#'OTPTBSCertificate'.subject,
+  Pred = fun (#'AttributeTypeAndValue'{type={2,5,4,3}}) -> true;
+             (_) -> false
+         end,
+  case lists:search(Pred, Subject) of
+    {value, #'AttributeTypeAndValue'{value = Value}} ->
+      case Value of
+        {printableString, PrintableString} ->
+          case is_printable_string(PrintableString) of
+            true ->
+              list_to_binary(PrintableString);
+            false ->
+              error
+          end;
+        {utf8String, UTF8String} ->
+          case unicode:characters_to_binary(UTF8String, utf8) of
+            Decoded when is_binary(Decoded) ->
+              Decoded;
+            _ ->
+              error
+          end;
+        StringType ->
+          error({unsupported_character_string_type, StringType})
+      end;
+    false ->
+      case TBSCert#'OTPTBSCertificate'.extensions of
+        asn1_NOVALUE ->
+          error;
+        Extensions ->
+          Pred = fun (#'Extension'{extnID={2,5,29,17}}) -> true;
+                     (_) -> false
+                 end,
+          case lists:search(Pred, Extensions) of
+            {value, AltNames} ->
+              F = fun({dNSName, Value}, Acc) -> [Value | Acc];
+                     (_, Acc) -> Acc
+                  end,
+              lists:foldl(F, [], AltNames#'Extension'.extnValue);
+            false ->
+              error
+          end
+      end
+  end.
+
+is_printable_string([]) ->
+  true;
+is_printable_string([Char | Rest])
+  when Char >= $A, Char =< $Z;
+       Char >= $a, Char =< $z;
+       Char >= $0, Char =< $9;
+       Char =:= $';
+       Char =:= $(;
+       Char =:= $);
+       Char =:= $+;
+       Char =:= $,;
+       Char =:= $-;
+       Char =:= $?;
+       Char =:= $:;
+       Char =:= $/;
+       Char =:= $=;
+       Char =:= $ ->
+  is_printable_string(Rest);
+is_printable_string(_) ->
+  false.
+  
