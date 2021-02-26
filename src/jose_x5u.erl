@@ -16,10 +16,15 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([decode/1]).
+-export([decode/2]).
 
 -export_type([cert_chain/0,
               decode_error_reason/0]).
+
+-type fingerprint() :: binary().
+-type decode_options() :: #{cacertfile => binary(),
+                            certificates => [fingerprint()],
+                            public_keys => [fingerprint()]}.
 
 -type cert_chain() :: [#'OTPCertificate'{}].
 -type decode_error_reason() ::
@@ -33,12 +38,12 @@
 %% JWK -> https://tools.ietf.org/html/rfc7517#section-4.6
 %% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.5
 %% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.7
--spec decode(binary()) ->
+-spec decode(binary(), decode_options()) ->
         {ok, cert_chain()} | {error, decode_error_reason()}.
-decode(Value) when is_binary(Value) ->
+decode(Value, Options) when is_binary(Value), is_map(Options) ->
   case uri:parse(Value) of
     {ok, _} ->
-      case fetch(Value) of
+      case fetch(Value, Options) of
         {ok, Bin} ->
           case decode_pem(Bin) of
             {ok, []} ->
@@ -60,14 +65,20 @@ decode(Value) when is_binary(Value) ->
     {error, Reason} ->
       {error, {invalid_format, Reason}}
   end;
-decode(_) ->
+decode(_, _) ->
   {error, invalid_format}.
 
--spec fetch(binary()) ->
+-spec fetch(binary(), decode_options()) ->
         {ok, binary()} | {error, {unavailable_service, term()}}.
-fetch(URI) ->
-  %% TODO: ensure the URI is trusted.
-  case httpc:request(get, {URI, []}, [], [{body_format, binary}]) of
+fetch(URI, Options) ->
+  RetOpts = [{body_format, binary}],
+  CACertFile = maps:get(cacertfile, Options, ""),
+  %% TODO: check CRL
+  SSLOpts = [{cacertfile, CACertFile},
+             {reuse_sessions, false},
+             {verify_fun,
+              {fun jose_verify_fun:verify/3, Options}}],
+  case httpc:request(get, {URI, []}, [{ssl, SSLOpts}], RetOpts) of
     {ok, {{_, 200, "OK"}, _, Bin}} ->
       {ok, Bin};
     {ok, {{_, Code, _}, _, Bin}} ->
@@ -99,6 +110,3 @@ decode_cert([{'Certificate', _, _} | _], _) ->
   {error, {invalid_format, encrypted_cert}};
 decode_cert([{Type, _, _} | _], _) ->
   {error, {invalid_format, {bad_type, Type}}}.
-
-
-

@@ -145,7 +145,20 @@
                  d := exponent(),
                  t := non_neg_integer()}.
 
--type decode_options() :: #{}.
+-type fingerprint() :: binary().
+-type decode_options() ::
+        #{trusted_remotes =>
+            #{cacertfile => file:filename_all(),
+              certificates => [fingerprint()],
+              public_keys => [fingerprint()]},
+         certificate_store => gen_server_ref()}.
+
+-type gen_server_ref() ::
+        term()
+      | {term(), atom()}
+      | {global, term()}
+      | {via, atom(), term()}
+      | pid().
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
@@ -163,16 +176,16 @@ decode(Bin, Options) when is_binary(Bin) ->
     {error, Reason} ->
       {error, {invalid_format, Reason}}
   end;
-decode(Data, _Options) when is_map(Data) ->
+decode(Data, Options) when is_map(Data) ->
   try
-    decode(kty, Data, #{})
+    decode(kty, Data, Options, #{})
   catch
     throw:{error, Reason} ->
       {error, Reason}
   end.
 
 %% https://tools.ietf.org/html/rfc7517#section-4.1
-decode(kty, Data, State) ->
+decode(kty, Data, Options, State) ->
   Kty =
     case maps:find(<<"kty">>, Data) of
       error ->
@@ -189,10 +202,10 @@ decode(kty, Data, State) ->
                {invalid_parameter,
                 {unsupported, Value}, kty}})
     end,
-  decode(use, Data, State#{kty => Kty});
+  decode(use, Data, Options, State#{kty => Kty});
 
 %% https://tools.ietf.org/html/rfc7517#section-4.2
-decode(use, Data, State) ->
+decode(use, Data, Options, State) ->
   State1 =
     case maps:find(<<"use">>, Data) of
       error ->
@@ -210,10 +223,10 @@ decode(use, Data, State) ->
                {invalid_parameter,
                 {invalid_syntax, Value}, use}})
     end,
-  decode(key_ops, Data, State1);
+  decode(key_ops, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.3
-decode(key_ops, Data, State) ->
+decode(key_ops, Data, Options, State) ->
   F = fun
         (<<"sign">>) -> sign;
         (<<"verify">>) -> verify;
@@ -244,10 +257,10 @@ decode(key_ops, Data, State) ->
                {invalid_parameter,
                 {unsupported, Value}, key_ops}})
     end,
-  decode(alg, Data, State1);
+  decode(alg, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.4
-decode(alg, Data, State) ->
+decode(alg, Data, Options, State) ->
   State1 =
     case maps:find(<<"alg">>, Data) of
       error ->
@@ -265,10 +278,10 @@ decode(alg, Data, State) ->
                {invalid_parameter,
                 {invalid_syntax, Value}, alg}})
     end,
-  decode(kid, Data, State1);
+  decode(kid, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.5
-decode(kid, Data, State) ->
+decode(kid, Data, Options, State) ->
   State1 =
     case maps:find(<<"kid">>, Data) of
       error ->
@@ -280,23 +293,23 @@ decode(kid, Data, State) ->
                {invalid_parameter,
                 {invalid_syntax, Value}, kid}})
     end,
-  decode(x5u, Data, State1);
+  decode(x5u, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.6
-decode(x5u, Data, State) ->
+decode(x5u, Data, Options, State) ->
   State1 =
     case maps:find(<<"x5u">>, Data) of
       error ->
         State;
       {ok, Value} ->
-        case jose_x5u:decode(Value) of
+        TrustedRemotes = maps:get(trusted_remotes, Options, #{}),
+        case jose_x5u:decode(Value, TrustedRemotes) of
           {ok, []} ->
             State;
           {ok, [Root | _] = Chain} ->
-            case
-              %% TODO: Use option instead default certficate store
-              jose_certificate_store:find(certificate_store_default, Root)
-            of
+            CertStore =
+              maps:get(certificate_store, Options, certificate_store_default),
+            case jose_certificate_store:find(CertStore, Root) of
               {ok, _} ->
                 %% TODO: ensure x5t match with x5u certificate.
                 State#{x5c => Chain};
@@ -308,10 +321,10 @@ decode(x5u, Data, State) ->
             throw({error, {invalid_parameter, Reason, x5c}})
         end
     end,
-  decode(x5c, Data, State1);
+  decode(x5c, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.7
-decode(x5c, Data, State) ->
+decode(x5c, Data, Options, State) ->
   State1 =
     case maps:find(<<"x5c">>, Data) of
       error ->
@@ -336,10 +349,10 @@ decode(x5c, Data, State) ->
             throw({error, {invalid_parameter, Reason, x5c}})
         end
     end,
-  decode(x5t, Data, State1);
+  decode(x5t, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.8
-decode(x5t, Data, State) ->
+decode(x5t, Data, Options, State) ->
   State1 =
     case maps:find(<<"x5t">>, Data) of
       error ->
@@ -352,10 +365,10 @@ decode(x5t, Data, State) ->
             throw({error, {invalid_parameter, Reason, x5t}})
         end
     end,
-  decode('x5t#S256', Data, State1);
+  decode('x5t#S256', Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.9
-decode('x5t#S256', Data, State) ->
+decode('x5t#S256', Data, _Options, State) ->
   State1 =
     case maps:find(<<"x5t#S256">>, Data) of
       error ->

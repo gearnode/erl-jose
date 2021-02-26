@@ -16,9 +16,9 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([verify_cert/3, verify_cert_pk/3]).
+-export([verify/3]).
 
--export_type([fingerprint_state/0]).
+-export_type([cert/0, event/0, user_state/0]).
 
 -type cert() :: #'OTPCertificate'{}.
 -type event() :: {bad_cert, Reason :: atom() | {revoked, atom()}}
@@ -26,73 +26,77 @@
                | valid
                | valid_peer.
 
--type user_state() :: term().
--type fingerprint_state() :: term().
+-type fingerprint() :: binary().
+-type user_state() :: #{certificates => [fingerprint()],
+                        public_keys => [fingerprint()]}.
 
--spec verify_cert(cert(), event(), fingerprint_state()) ->
-        {valid, user_state()}
-          | {valid_peer, fingerprint_state()}
-          | {fail, Reason :: term()}
-          | {unknown, user_state()}.
-verify_cert(_, {bad_cert, _} = Reason, _) ->
+-type verify_ret() :: {valid, user_state()}
+                    | {valid_peer, user_state()}
+                    | {fail, Reason :: term()}
+                    | {unknown, user_state()}.
+
+
+-spec verify(cert(), event(), user_state()) ->
+        verify_ret().
+verify(_, {bad_cert, _} = Reason, _) ->
   {fail, Reason};
-verify_cert(_, {extension, _}, UserState) ->
+verify(_, {extension, _}, UserState) ->
   {unknown, UserState};
-verify_cert(_, valid, UserState) ->
+verify(_, valid, UserState) ->
   {valid, UserState};
-verify_cert(Cert, valid_peer, UserState) ->
-  case proplists:get_value(check_fingerprint, UserState) of
-    undefined ->
-      {fail, no_option};
-    {Algorithm, HexA} ->
-      case hex:decode(HexA) of
-        {error, Reason} ->
-          {fail, {invalid_fingerprint, Reason}};
-        {ok, HexB} ->
-          CertBin = public_key:pkix_encode('OTPCertificate', Cert, 'otp'),
-          case crypto:hash(Algorithm, CertBin) of
-            HexB ->
-              {valid_peer, hex:encode(HexB, [uppercase])};
-            _ ->
-              {fail, fingerprint_no_match}
+verify(Cert, valid_peer, UserState) ->
+  verify_certificate_fingerprint(Cert, UserState).
+
+verify_certificate_fingerprint(Cert, UserState) ->
+  Fingerprints = maps:get(certificates, UserState, []),
+  CertBin = public_key:pkix_encode('OTPCertificate', Cert, 'otp'),
+  CertSHA2 = crypto:hash(sha256, CertBin),
+
+  F = fun (Hex) ->
+          case hex:decode(Hex) of
+            {error, Reason} ->
+              %% TODO: log waring here
+              false;
+            {ok, CertSHA2} ->
+              true;
+            {ok, _} ->
+              false
           end
-      end
+      end,
+
+  case lists:any(F, Fingerprints) of
+    true ->
+      {valid, UserState};
+    false ->
+      verify_public_key_fingerprint(Cert, UserState)
   end.
 
--spec verify_cert_pk(cert(), event(), fingerprint_state()) ->
-        {valid, user_state()}
-          | {valid_peer, fingerprint_state()}
-          | {fail, Reason :: term()}
-          | {unknown, user_state()}.
-verify_cert_pk(_, {bad_cert, _} = Reason, _) ->
-  {fail, Reason};
-verify_cert_pk(_, {extension, _}, UserState) ->
-  {unknown, UserState};
-verify_cert_pk(_, valid, UserState) ->
-  {valid, UserState};
-verify_cert_pk(Cert, valid_peer, UserState) ->
-  case proplists:get_value(check_pk, UserState) of
-    invalid ->
-      {fail, no_option};
-    {base64, Bin64} ->
-      case b64:decode(Bin64) of
-        {ok, PK} ->
-          TBSCert = Cert#'OTPCertificate'.tbsCertificate,
-          PublicKeyInfo = TBSCert#'OTPTBSCertificate'.subjectPublicKeyInfo,
-          PublicKey =
-            PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
-          {'SubjectPublicKeyInfo', Encoded, not_encrypted} =
-            public_key:pem_entry_encode('SubjectPublicKeyInfo', PublicKey),
+verify_public_key_fingerprint(Cert, UserState) ->
+  Fingerprints = maps:get(public_keys, UserState, []),
+  TBSCert = Cert#'OTPCertificate'.tbsCertificate,
+  PubKeyInfo = TBSCert#'OTPTBSCertificate'.subjectPublicKeyInfo,
+  PubKey = PubKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
+  {'SubjectPublicKeyInfo', PubKeyDer, not_encrypted} =
+    public_key:pem_entry_encode('SubjectPublicKeyInfo', PubKey),
+  PubKeySHA2 = crypto:hash(sha256, PubKeyDer),
 
-          if
-            PK =:= Encoded ->
-              {valid_peer, UserState};
-            true ->
-              {fail, PK}
-          end;
-        {error, Reason} ->
-          {fail, Reason}
-      end
+  F = fun (Hex) ->
+          case hex:decode(Hex) of
+            {error, Reason} ->
+              %% TODO: log waring here
+              false;
+            {ok, PubKeySHA2} ->
+              true;
+            {ok, _} ->
+              false
+          end
+      end,
+
+  case lists:any(F, Fingerprints) of
+    true ->
+      {valid, UserState};
+    false ->
+      {fail, todo}
   end.
 
 %% TODO: Verify by hostname is not as easy as I think. I would supports this
