@@ -72,10 +72,11 @@ decode(_, _) ->
         {ok, binary()} | {error, {unavailable_service, term()}}.
 fetch(URI, Options) ->
   RetOpts = [{body_format, binary}],
-  CACertFile = maps:get(cacertfile, Options, ""),
-  %% TODO: check CRL
+  CACertFile = maps:get(cacertfile, Options, "/dev/null"),
   SSLOpts = [{cacertfile, CACertFile},
+             {verify, verify_peer},
              {reuse_sessions, false},
+             {crl_check, best_effort},
              {verify_fun,
               {fun jose_verify_fun:verify/3, Options}}],
   case httpc:request(get, {URI, []}, [{ssl, SSLOpts}], RetOpts) of

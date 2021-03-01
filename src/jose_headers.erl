@@ -12,9 +12,6 @@
 %% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 %% IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
--module(jose_jwk_set).
+-module(jose_headers).
 
-%% -export([decode/1]).
-%% 
-%% -spec decode(binary()) ->
-%%         ok.
+-export([]).
