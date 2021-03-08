@@ -334,10 +334,9 @@ decode(x5c, Data, Options, State) ->
           {ok, []} ->
             State;
           {ok, [Root | _] = Chain} ->
-            case
-              %% TODO: Use option instead default certficate store
-              jose_certificate_store:find(certificate_store_default, Root)
-            of
+            CertStore =
+              maps:get(certificate_store, Options, certificate_store_default),
+            case jose_certificate_store:find(CertStore, Root) of
               {ok, _} ->
                 %% TODO: ensure x5t match with x5u certificate.
                 State#{x5c => Chain};
