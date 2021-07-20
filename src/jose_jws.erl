@@ -143,18 +143,16 @@ serialize_payload(#{b64 := false} = _Header, Payload) ->
 serialize_payload(_Header, Payload) ->
   b64url:encode(Payload, [nopad]).
 
-
 -spec decode_compact(compact(),
                      jose_jwa:alg(),
                      [jose_jwa:verify_key()] | jose_jwa:verify_key()) ->
         {ok, jws()} | {error, decode_error_reason()}.
 decode_compact(Token, Alg, Key) ->
-  DefaultOptions = #{},
-  decode_compact(Token, Alg, Key, DefaultOptions).
+  decode_compact(Token, Alg, Key, #{}).
 
 -spec decode_compact(compact(),
                      jose_jwa:alg(),
-                     [jose_jwa:verify_key()] | jose_jwa:verify_key(),
+                     [jose_jwa:verify_key()],
                      decode_options()) ->
         {ok, jws()} | {error, decode_error_reason()}.
 decode_compact(Token, Alg, Key, Options) when not is_list(Key) ->

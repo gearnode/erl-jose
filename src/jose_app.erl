@@ -18,8 +18,8 @@
 
 -export([start/2, stop/1]).
 
-start(_StartType, _Args) ->
+start(_, _) ->
   jose_sup:start_link().
 
-stop(_State) ->
+stop(_) ->
   ok.
