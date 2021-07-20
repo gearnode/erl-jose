@@ -14,8 +14,6 @@
 
 -module(jose_jwk).
 
--include_lib("public_key/include/public_key.hrl").
-
 -export([decode/1]).
 
 -export_type([jwk/0,
@@ -434,10 +432,10 @@ decode_ec(x, Data, #{crv := Crv} = State) ->
                        Crv =:= 'P-384', byte_size(X) =:= 48;
                        Crv =:= 'P-521', byte_size(X) =:= 66 ->
             State#{x => X};
-          {ok, Value} ->
+          {ok, DecodedValue} ->
             throw({error,
                    {invalid_parameter,
-                    {invalid_syntax, Value}, x}})
+                    {invalid_syntax, DecodedValue}, x}})
         end;
       {ok, Value} ->
         throw({error,
@@ -463,10 +461,10 @@ decode_ec(y, Data, #{crv := Crv} = State) ->
                        Crv =:= 'P-384', byte_size(Y) =:= 48;
                        Crv =:= 'P-521', byte_size(Y) =:= 66 ->
             State#{y => Y};
-          {ok, Value} ->
+          {ok, DecodedValue} ->
             throw({error,
                    {invalid_parameter,
-                    {invalid_syntax, Value}, y}})
+                    {invalid_syntax, DecodedValue}, y}})
         end;
       {ok, Value} ->
         throw({error,
@@ -489,10 +487,10 @@ decode_ec(d, Data, State) ->
         {ok, D} when is_binary(Value) ->
           %% TODO: check the size of the octect string.
           State#{d => D};
-        {ok, Value} ->
+        {ok, DecodedValue} ->
           throw({error,
                  {invalid_parameter,
-                  {invalid_syntax, Value}, y}})
+                  {invalid_syntax, DecodedValue}, y}})
       end;
     {ok, Value} ->
       throw({error,
