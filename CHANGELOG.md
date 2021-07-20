@@ -8,11 +8,13 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ## [Unreleased]
 ### Added
 - Add `jose_jws:supported_crits/0` function.
+- Add JWK decoding.
 
 ## Changed
 - Extract base64 encoding modules in dedicated library.
 - Rename `jose_jwa:verify/4` in `jose_jwa:is_valid/4`.
 - Reformat the codebase.
+- Remove deprecated hex dependency.
 
 ### Fixed
 - Fix media type without type returns an error.
