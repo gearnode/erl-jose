@@ -52,17 +52,7 @@ verify_certificate_fingerprint(Cert, UserState) ->
   CertBin = public_key:pkix_encode('OTPCertificate', Cert, 'otp'),
   CertSHA2 = crypto:hash(sha256, CertBin),
 
-  F = fun (Hex) ->
-          case hex:decode(Hex) of
-            {error, Reason} ->
-              %% TODO: log waring here
-              false;
-            {ok, CertSHA2} ->
-              true;
-            {ok, _} ->
-              false
-          end
-      end,
+  F = fun (Hex) -> CertSHA2 =:= binary:decode_hex(Hex) end,
 
   case lists:any(F, Fingerprints) of
     true ->
@@ -80,17 +70,7 @@ verify_public_key_fingerprint(Cert, UserState) ->
     public_key:pem_entry_encode('SubjectPublicKeyInfo', PubKey),
   PubKeySHA2 = crypto:hash(sha256, PubKeyDer),
 
-  F = fun (Hex) ->
-          case hex:decode(Hex) of
-            {error, Reason} ->
-              %% TODO: log waring here
-              false;
-            {ok, PubKeySHA2} ->
-              true;
-            {ok, _} ->
-              false
-          end
-      end,
+  F = fun (Hex) -> PubKeySHA2 =:= binary:decode_hex(Hex) end,
 
   case lists:any(F, Fingerprints) of
     true ->

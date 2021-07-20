@@ -12,8 +12,7 @@
     json,
     b64,
     ssl,
-    inets,
-    hex
+    inets
    ]},
   {env,[]},
   {modules, []},
