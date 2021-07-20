@@ -182,6 +182,8 @@ decode(Data, Options) when is_map(Data) ->
       {error, Reason}
   end.
 
+-spec decode(atom(), map(), decode_options(), map()) ->
+        jwk().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
 decode(kty, Data, Options, State) ->
   Kty =
@@ -389,6 +391,7 @@ decode('x5t#S256', Data, _Options, State) ->
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.2
+-spec decode_ec(map(), map()) -> ec().
 decode_ec(Data, State) ->
   decode_ec(crv, Data, State).
 
@@ -499,6 +502,7 @@ decode_ec(d, Data, State) ->
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3
+-spec decode_rsa(map(), map()) -> rsa().
 decode_rsa(Data, State) ->
   decode_rsa(n, Data, State).
 
@@ -765,6 +769,7 @@ decode_rsa_oth(t, Data, State) ->
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.4
+-spec decode_oct(map(), map()) -> oct().
 decode_oct(Data, State) ->
   decode_oct(k, Data, State).
 
