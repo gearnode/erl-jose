@@ -182,8 +182,7 @@ decode(Data, Options) when is_map(Data) ->
       {error, Reason}
   end.
 
--spec decode(atom(), map(), decode_options(), map()) ->
-        jwk().
+-spec decode(atom(), map(), decode_options(), map()) -> jwk().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
 decode(kty, Data, Options, State) ->
   Kty =
