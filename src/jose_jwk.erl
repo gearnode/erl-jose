@@ -151,6 +151,19 @@
               public_keys => [fingerprint()]},
          certificate_store => et_gen_server:ref()}.
 
+-type decode_step() ::
+        kty
+      | use
+      | key_ops
+      | alg
+      | kid
+      | x5u
+      | x5c
+      | x5t
+      | 'x5t#S256'.
+
+-type decode_state() :: map().
+
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
 decode(Term) ->
@@ -175,7 +188,7 @@ decode(Data, Options) when is_map(Data) ->
       {error, Reason}
   end.
 
--spec decode(atom(), map(), decode_options(), map()) -> jwk().
+-spec decode(decode_step(), map(), decode_options(), decode_state()) -> jwk().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
 decode(kty, Data, Options, State) ->
   Kty =
