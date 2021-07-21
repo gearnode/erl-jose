@@ -287,16 +287,14 @@ decode(x5u, Data, Options, State) ->
         case jose_x5u:decode(Value, TrustedRemotes) of
           {ok, []} ->
             State;
-          {ok, [Root | _] = Chain} ->
-            CertStore =
-              maps:get(certificate_store, Options, certificate_store_default),
-            case jose_certificate_store:find(CertStore, Root) of
-              {ok, _} ->
-                %% TODO: ensure x5t match with x5u certificate.
-                State#{x5c => Chain};
-              error ->
+          {ok, Chain} ->
+            case is_certificate_chain_trustable(Chain, Options) of
+              true ->
+                State#{x5u => Value};
+              false ->
                 throw({error,
-                       {invalid_parameter, {bad_cert, untrusted_cert}, x5u}})
+                       {invalid_parameter,
+                        {bad_cert, untrusted_cert}, x5u}})
             end;
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, x5c}})
@@ -314,16 +312,14 @@ decode(x5c, Data, Options, State) ->
         case jose_x5c:decode(Value) of
           {ok, []} ->
             State;
-          {ok, [Root | _] = Chain} ->
-            CertStore =
-              maps:get(certificate_store, Options, certificate_store_default),
-            case jose_certificate_store:find(CertStore, Root) of
-              {ok, _} ->
-                %% TODO: ensure x5t match with x5u certificate.
+          {ok, Chain} ->
+            case is_certificate_chain_trustable(Chain, Options) of
+              true ->
                 State#{x5c => Chain};
-              error ->
+              false ->
                 throw({error,
-                       {invalid_parameter, {bad_cert, untrusted_cert}, x5c}})
+                       {invalid_parameter,
+                        {bad_cert, untrusted_cert}, x5c}})
             end;
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, x5c}})
@@ -720,3 +716,14 @@ bytes_integer(Bin) when is_binary(Bin) ->
   Length = 8 * size(Bin),
   <<Int:Length>> = Bin,
   Int.
+
+-spec is_certificate_chain_trustable(jose:certificate_chain(), decode_options()) ->
+        boolean().
+is_certificate_chain_trustable([Root | _], Options) ->
+  Store = maps:get(certificate_store, Options, certificate_store_default),
+  case jose_certificate_store:find(Store, Root) of
+    {ok, _} ->
+      true;
+    error ->
+      false
+  end.
