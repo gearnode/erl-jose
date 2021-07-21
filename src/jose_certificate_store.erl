@@ -27,40 +27,28 @@
          remove/2,
          find/2]).
 
--type gen_server_name() ::
-        {local, term()}
-      | {global, term()}
-      | {via, atom(), term()}.
-
--type gen_server_ref() ::
-        term()
-      | {term(), atom()}
-      | {global, term()}
-      | {via, atom(), term()}
-      | pid().
-
 -type options() :: #{files => [file:name_all()]}.
 
--spec add(gen_server_ref(), public_key:der_encoded()) ->
+-type state() :: #{db := ets:tab()}.
+
+-spec add(et_gen_server:ref(), public_key:der_encoded()) ->
         ok.
 add(Ref, Der) ->
-  gen_server:call(Ref, {add, Der}).
+  gen_server:call(Ref, {add, Der}, infinity).
 
--spec remove(gen_server_ref(), jose:certificate_thumbprint()) ->
+-spec remove(et_gen_server:ref(), jose:certificate_thumbprint()) ->
         ok.
 remove(Ref, Der) ->
-  gen_server:call(Ref, {remove, Der}).
+  gen_server:call(Ref, {remove, Der}, infinity).
 
-%% TODO: fix dyalizer.
-%% TODO: better API to find certificate.
--spec find(gen_server_ref(), term()) ->
+-spec find(et_gen_server:ref(), term()) ->
         {ok, jose:certificate()} | error.
 find(Ref, Thumbprint) when byte_size(Thumbprint) =:= 20 ->
-  gen_server:call(Ref, {find, {sha1, Thumbprint}});
+  gen_server:call(Ref, {find, {sha1, Thumbprint}}, infinity);
 find(Ref, Thumbprint) when byte_size(Thumbprint) =:= 32 ->
-  gen_server:call(Ref, {find, {sha2, Thumbprint}});
+  gen_server:call(Ref, {find, {sha2, Thumbprint}}, infinity);
 find(Ref, {Sha, Thumbprint}) when Sha =:= sha1; Sha =:= sha2 ->
-  gen_server:call(Ref, {find, {Sha, Thumbprint}});
+  gen_server:call(Ref, {find, {Sha, Thumbprint}}, infinity);
 find(Ref, Cert) ->
   Der = public_key:pkix_encode('OTPCertificate', Cert, otp),
   Sha1 = crypto:hash(sha, Der),
@@ -72,11 +60,12 @@ find(Ref, Cert) ->
       find(Ref, Sha2)
   end.
 
--spec start_link(gen_server_name(), options()) ->
-        {ok, pid()} | ignore | {error, term()}.
+-spec start_link(et_gen_server:name(), options()) ->
+        et_gen_server:start_ret().
 start_link(Name, Options) ->
   gen_server:start_link(Name, ?MODULE, [Options], []).
 
+-spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
   Tab = ets:new(certificate, [set, private]),
   Filenames = maps:get(files, Options, []),
@@ -85,10 +74,13 @@ init([Options]) ->
   lists:foreach(fun (Der) -> insert(Tab, Der) end, Certs),
   {ok, #{db => Tab}}.
 
+-spec terminate(et_gen_server:terminate_reason(), state()) -> ok.
 terminate(_Reason, #{db := Tab}) ->
   ets:delete(Tab),
   ok.
 
+-spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
+        et_gen_server:handle_call_ret(state()).
 handle_call({add, Der}, _From, State = #{db := Tab}) ->
   insert(Tab, Der),
   {reply, ok, State};
@@ -109,10 +101,14 @@ handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
 
+-spec handle_cast(term(), state()) ->
+        et_gen_server:handle_cast_ret(state()).
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
   {noreply, State}.
 
+-spec handle_info(term(), state()) ->
+        et_gen_server:handle_info_ret(state()).
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
@@ -157,8 +153,9 @@ read_cert_files([Filename | T], Acc) ->
 decode_cert_files([], Acc) ->
   Acc;
 decode_cert_files([Content | T], Acc) ->
-  AppendFun = fun ({'Certificate', Der, not_encrypted}, A) -> [Der | A];
-                  (_, _) -> erlang:error(invalid_certificate_bundle)
-              end,
+  AppendFun =
+    fun ({'Certificate', Der, not_encrypted}, A) -> [Der | A];
+        (_, _) -> erlang:error(invalid_certificate_bundle)
+    end,
   Acc2 = lists:foldl(AppendFun, Acc, public_key:pem_decode(Content)),
   decode_cert_files(T, Acc2).
