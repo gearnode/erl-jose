@@ -149,14 +149,7 @@
             #{cacertfile => file:filename_all(),
               certificates => [fingerprint()],
               public_keys => [fingerprint()]},
-         certificate_store => gen_server_ref()}.
-
--type gen_server_ref() ::
-        term()
-      | {term(), atom()}
-      | {global, term()}
-      | {via, atom(), term()}
-      | pid().
+         certificate_store => et_gen_server:ref()}.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
