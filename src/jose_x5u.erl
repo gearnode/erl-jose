@@ -18,15 +18,13 @@
 
 -export([decode/2]).
 
--export_type([cert_chain/0,
-              decode_error_reason/0]).
+-export_type([decode_error_reason/0]).
 
 -type fingerprint() :: binary().
 -type decode_options() :: #{cacertfile => binary(),
                             certificates => [fingerprint()],
                             public_keys => [fingerprint()]}.
 
--type cert_chain() :: [#'OTPCertificate'{}].
 -type decode_error_reason() ::
         invalid_format
       | {invalid_format, term()}
@@ -39,7 +37,7 @@
 %% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.5
 %% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.7
 -spec decode(binary(), decode_options()) ->
-        {ok, cert_chain()} | {error, decode_error_reason()}.
+        {ok, jose:certificate_chain()} | {error, decode_error_reason()}.
 decode(Value, Options) when is_binary(Value), is_map(Options) ->
   case uri:parse(Value) of
     {ok, _} ->
@@ -88,14 +86,14 @@ fetch(URI, Options) ->
   end.
 
 -spec decode_pem(binary()) ->
-        {ok, cert_chain()} | {error, decode_error_reason()}.
+        {ok, jose:certificate_chain()} | {error, decode_error_reason()}.
 decode_pem(Bin) ->
   Chain = public_key:pem_decode(Bin),
   decode_cert(Chain, []).
 
 -spec decode_cert([public_key:pem_entry()], Acc) ->
         {ok, Acc} | {error, decode_error_reason()}
-          when Acc :: cert_chain().
+          when Acc :: jose:certificate_chain().
 decode_cert([], Acc) ->
   {ok, Acc};
 decode_cert([{'Certificate', Der, not_encrypted} | T], Acc) ->
