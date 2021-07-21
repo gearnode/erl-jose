@@ -31,40 +31,31 @@
 
 -type options() :: #{files => [file:name_all()]}.
 
--type gen_server_name() ::
-        {local, term()}
-      | {global, term()}
-      | {via, atom(), term()}.
-
--type gen_server_ref() ::
-        term()
-      | {term(), atom()}
-      | {global, term()}
-      | {via, atom(), term()}
-      | pid().
+-type state() :: #{db := ets:tab()}.
 
 -type key_id() :: binary().
 
--spec add(gen_server_ref(), public_key:pem_entry()) ->
+-spec add(et_gen_server:ref(), public_key:pem_entry()) ->
         ok | error.
 add(Ref, PemEntry) ->
-  gen_server:call(Ref, {add, PemEntry}).
+  gen_server:call(Ref, {add, PemEntry}, infinity).
 
--spec remove(gen_server_ref(), key_id()) ->
+-spec remove(et_gen_server:ref(), key_id()) ->
         ok.
 remove(Ref, KId) ->
-  gen_server:call(Ref, {remove, KId}).
+  gen_server:call(Ref, {remove, KId}, infinity).
 
--spec find(gen_server_ref(), key_id()) ->
+-spec find(et_gen_server:ref(), key_id()) ->
         {ok, public_key:public_key()} | error.
 find(Ref, KId) ->
-  gen_server:call(Ref, {select, KId}).
+  gen_server:call(Ref, {select, KId}, infinity).
 
--spec start_link(gen_server_name(), options()) ->
-        {ok, pid()} | ignore | {error, term()}.
+-spec start_link(et_gen_server:name(), options()) ->
+        et_gen_server:start_ret().
 start_link(Name, Options) ->
   gen_server:start_link(Name, ?MODULE, [Options], []).
 
+-spec init(list()) -> et_gen_server:init_ret(state()).
 init([Options]) ->
   Tab = ets:new(certificate, [set, private]),
   Filenames = maps:get(files, Options, []),
@@ -79,10 +70,13 @@ init([Options]) ->
   lists:foreach(F, Keys),
   {ok, #{db => Tab}}.
 
+-spec terminate(et_gen_server:terminate_reason(), state()) -> ok.
 terminate(_Reason, #{db := Tab}) ->
   ets:delete(Tab),
   ok.
 
+-spec handle_call(term(), {pid(), et_gen_server:request_id()}, state()) ->
+        et_gen_server:handle_call_ret(state()).
 handle_call({add, PemEntry}, _From, #{db := Tab} = State) ->
   case insert(Tab, PemEntry) of
     ok -> {reply, ok, State};
@@ -105,10 +99,14 @@ handle_call(Msg, From, State) ->
   ?LOG_WARNING("unhandled call ~p from ~p", [Msg, From]),
   {reply, unhandled, State}.
 
+-spec handle_cast(term(), state()) ->
+        et_gen_server:handle_cast_ret(state()).
 handle_cast(Msg, State) ->
   ?LOG_WARNING("unhandled cast ~p", [Msg]),
   {noreply, State}.
 
+-spec handle_info(term(), state()) ->
+        et_gen_server:handle_info_ret(state()).
 handle_info(Msg, State) ->
   ?LOG_WARNING("unhandled info ~p", [Msg]),
   {noreply, State}.
@@ -130,7 +128,6 @@ insert(Tab, {'SubjectPublicKeyInfo', Der, not_encrypted} = PE) ->
   end;
 insert(_, _) ->
   error.
-
 
 -spec read_key_files([file:name_all()], [binary()]) ->
         [binary()].
