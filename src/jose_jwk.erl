@@ -162,7 +162,7 @@
       | x5t
       | 'x5t#S256'.
 
--type decode_state() :: map().
+-type decode_state() :: #{jwk => map(), cert => jose:certificate()}.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
@@ -204,27 +204,27 @@ decode(kty, Data, Options, State) ->
       {ok, Value} ->
         throw({error, {invalid_parameter, {unsupported, Value}, kty}})
     end,
-  decode(use, Data, Options, State#{kty => Kty});
+  decode(use, Data, Options, State#{jwk => #{kty => Kty}});
 
 %% https://tools.ietf.org/html/rfc7517#section-4.2
-decode(use, Data, Options, State) ->
-  State1 =
+decode(use, Data, Options, #{jwk := JWK} = State) ->
+  JWK1 =
     case maps:find(<<"use">>, Data) of
       error ->
-        State;
+        JWK;
       {ok, <<"sig">>} ->
-        State#{use => sig};
+        JWK#{use => sig};
       {ok, <<"enc">>} ->
-        State#{use => enc};
+        JWK#{use => enc};
       {ok, Value} when is_binary(Value) ->
         throw({error, {invalid_parameter, {unsupported, Value}, use}});
       {ok, Value} ->
         throw({error, {invalid_parameter, {invalid_syntax, Value}, use}})
     end,
-  decode(key_ops, Data, Options, State1);
+  decode(key_ops, Data, Options, State#{jwk => JWK1});
 
 %% https://tools.ietf.org/html/rfc7517#section-4.3
-decode(key_ops, Data, Options, State) ->
+decode(key_ops, Data, Options, #{jwk := JWK} = State) ->
   F = fun
         (<<"sign">>) -> sign;
         (<<"verify">>) -> verify;
@@ -239,51 +239,51 @@ decode(key_ops, Data, Options, State) ->
         (Value) ->
           throw({error, {invalid_parameter, {invalid_syntax, Value}, key_ops}})
       end,
-  State1 =
+  JWK1 =
     case maps:find(<<"key_ops">>, Data) of
       error ->
-        State;
+        JWK;
       {ok, Value} when is_list(Value) ->
         Operations = lists:map(F, Value),
-        State#{key_ops => Operations};
+        JWK#{key_ops => Operations};
       {ok, Value} ->
         throw({error, {invalid_parameter, {unsupported, Value}, key_ops}})
     end,
-  decode(alg, Data, Options, State1);
+  decode(alg, Data, Options, State#{jwk => JWK1});
 
 %% https://tools.ietf.org/html/rfc7517#section-4.4
-decode(alg, Data, Options, State) ->
-  State1 =
+decode(alg, Data, Options, #{jwk := JWK} = State) ->
+  JWK1 =
     case maps:find(<<"alg">>, Data) of
       error ->
-        State;
+        JWK;
       {ok, Value} when is_binary(Value) ->
         case jose_jwa:decode_alg(Value) of
           {ok, Alg} ->
-            State#{alg => Alg};
+            JWK#{alg => Alg};
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, alg}})
         end;
       {ok, Value} ->
         throw({error, {invalid_parameter, {invalid_syntax, Value}, alg}})
     end,
-  decode(kid, Data, Options, State1);
+  decode(kid, Data, Options, State#{jwk => JWK1});
 
 %% https://tools.ietf.org/html/rfc7517#section-4.5
-decode(kid, Data, Options, State) ->
-  State1 =
+decode(kid, Data, Options, #{jwk := JWK} = State) ->
+  JWK1 =
     case maps:find(<<"kid">>, Data) of
       error ->
-        State;
+        JWK;
       {ok, Kid} when is_binary(Kid) ->
-        State#{kid => Kid};
+        JWK#{kid => Kid};
       {ok, Value} ->
         throw({error, {invalid_parameter, {invalid_syntax, Value}, kid}})
     end,
-  decode(x5u, Data, Options, State1);
+  decode(x5u, Data, Options, State#{jwk => JWK1});
 
 %% https://tools.ietf.org/html/rfc7517#section-4.6
-decode(x5u, Data, Options, State) ->
+decode(x5u, Data, Options, #{jwk := JWK} = State) ->
   State1 =
     case maps:find(<<"x5u">>, Data) of
       error ->
@@ -294,14 +294,11 @@ decode(x5u, Data, Options, State) ->
           {ok, []} ->
             State;
           {ok, Chain} ->
-            case is_certificate_chain_trustable(Chain, Options) of
-              true ->
-                State#{x5u => Value};
-              false ->
-                throw({error,
-                       {invalid_parameter,
-                        {bad_cert, untrusted_cert}, x5u}})
-            end;
+            is_certificate_chain_trustable(Chain, Options) orelse
+              throw({error, {invalid_parameter,
+                             {bad_cert, untrusted_cert}, x5u}}),
+            Certificate = lists:last(Chain),
+            State#{jwk => JWK#{x5u => Value}, cert => Certificate};
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, x5c}})
         end
@@ -309,7 +306,7 @@ decode(x5u, Data, Options, State) ->
   decode(x5c, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.7
-decode(x5c, Data, Options, State) ->
+decode(x5c, Data, Options, #{jwk := JWK} = State) ->
   State1 =
     case maps:find(<<"x5c">>, Data) of
       error ->
@@ -319,13 +316,17 @@ decode(x5c, Data, Options, State) ->
           {ok, []} ->
             State;
           {ok, Chain} ->
-            case is_certificate_chain_trustable(Chain, Options) of
-              true ->
-                State#{x5c => Chain};
-              false ->
-                throw({error,
-                       {invalid_parameter,
-                        {bad_cert, untrusted_cert}, x5c}})
+            is_certificate_chain_trustable(Chain, Options) orelse
+              throw({error, {invalid_parameter,
+                             {bad_cert, untrusted_cert}, x5c}}),
+            Certificate = lists:last(Chain),
+            case maps:find(cert, State) of
+              {ok, Certificate} ->
+                State#{jwk => JWK#{x5c => Chain}};
+              {ok, _} ->
+                throw({error, {invalid_parameter, thumbprint_not_match, x5c}});
+              error ->
+                State#{jwk => JWK#{x5c => Chain}, cert => Certificate}
             end;
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, x5c}})
@@ -334,15 +335,23 @@ decode(x5c, Data, Options, State) ->
   decode(x5t, Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.8
-decode(x5t, Data, Options, State) ->
+decode(x5t, Data, Options, #{jwk := JWK} = State) ->
   State1 =
     case maps:find(<<"x5t">>, Data) of
       error ->
-        State;
+        JWK;
       {ok, Value} ->
         case jose_x5t:decode(Value) of
           {ok, Thumbprint} ->
-            State#{x5t => Thumbprint};
+            case maps:find(cert, State) of
+              {ok, Certificate} ->
+                certificate_thumbprint(Certificate) =:= Thumbprint orelse
+                  throw({error,
+                         {invalid_parameter, thumbprint_not_match, x5t}}),
+                State#{jwk => JWK#{x5t => Thumbprint}};
+              error ->
+                State#{jwk => JWK#{x5t => Thumbprint}}
+            end;
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, x5t}})
         end
@@ -350,7 +359,7 @@ decode(x5t, Data, Options, State) ->
   decode('x5t#S256', Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.9
-decode('x5t#S256', Data, _Options, State) ->
+decode('x5t#S256', Data, _, #{jwk := JWK} = State) ->
   State1 =
     case maps:find(<<"x5t#S256">>, Data) of
       error ->
@@ -358,18 +367,27 @@ decode('x5t#S256', Data, _Options, State) ->
       {ok, Value} ->
         case jose_x5tS256:decode(Value) of
           {ok, Thumbprint} ->
-            State#{x5t => Thumbprint};
+            case maps:find(cert, State) of
+              {ok, Certificate} ->
+                certificate_thumbprint256(Certificate) =:= Thumbprint orelse
+                  throw({error,
+                         {invalid_parameter, thumbprint_not_match, 'x5t#S256'}}),
+                State#{jwk => JWK#{'x5t#S256' => Thumbprint}};
+              error ->
+                State#{jwk => JWK#{'x5t#S256' => Thumbprint}}
+            end;
           {error, Reason} ->
             throw({error, {invalid_parameter, Reason, 'x5t#S256'}})
         end
     end,
-  case maps:get(kty, State1) of
+  #{jwk := JWK1} = State1,
+  case maps:get(kty, JWK1) of
     oct ->
-      decode_oct(Data, State1);
+      decode_oct(Data, JWK1);
     'RSA' ->
-      decode_rsa(Data, State1);
+      decode_rsa(Data, JWK1);
     'EC' ->
-      decode_ec(Data, State1)
+      decode_ec(Data, JWK1)
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.2
@@ -733,3 +751,13 @@ is_certificate_chain_trustable([Root | _], Options) ->
     error ->
       false
   end.
+
+-spec certificate_thumbprint(jose:certificate()) -> binary().
+certificate_thumbprint(Certificate) ->
+  Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
+  crypto:hash(sha, Der).
+
+-spec certificate_thumbprint256(jose:certificate()) -> binary().
+certificate_thumbprint256(Certificate) ->
+  Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
+  crypto:hash(sha256, Der).
