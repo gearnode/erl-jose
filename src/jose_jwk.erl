@@ -183,6 +183,9 @@ to_record(#{kty := 'RSA', n := N, e := E}) ->
   #'RSAPublicKey'{modulus = N,
                   publicExponent = E};
 
+to_record(#{kty := oct, k := K}) ->
+  K.
+
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
 decode(Term) ->
