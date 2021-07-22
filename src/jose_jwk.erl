@@ -168,9 +168,20 @@
 -type decode_state() :: #{jwk => map(), cert => jose:certificate()}.
 
 -spec to_record(jwk()) -> term().
-to_record(#{kty := 'RSA'} = JWK) ->
-  #'RSAPublicKey'{modulus = maps:get(n, JWK),
-                  publicExponent = maps:get(e, JWK)}.
+to_record(#{kty := 'RSA', n := N, e := E, d := D} = JWK) ->
+  #'RSAPrivateKey'{version = 'two-prime',
+                   modulus = N,
+                   publicExponent = E,
+                   privateExponent = D,
+                   prime1 = maps:get(p, JWK, undefined),
+                   prime2 = maps:get(q, JWK, undefined),
+                   exponent1 = maps:get(dp, JWK, undefined),
+                   exponent2 = maps:get(dq, JWK, undefined),
+                   coefficient = maps:get(qi, JWK, undefined)};
+
+to_record(#{kty := 'RSA', n := N, e := E}) ->
+  #'RSAPublicKey'{modulus = N,
+                  publicExponent = E};
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
