@@ -30,7 +30,7 @@
 -spec decode(binary()) ->
         {ok, binary()} | {error, decode_error_reason()}.
 decode(Bin) when is_binary(Bin) ->
-  case b64url:decode(Bin) of
+  case b64url:decode(Bin, [nopad]) of
     {ok, Thumbprint} when byte_size(Thumbprint) =:= 20 ->
       {ok, Thumbprint};
     {ok, _} ->
