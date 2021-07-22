@@ -25,6 +25,6 @@
 -type header_parameter_name() :: binary().
 -type kid() :: binary().
 -type certificate_thumbprint() :: binary().
--type certificate() :: {'Certificate' | 'OTPCertificate', _, _, _}.
+-type certificate() :: #'OTPCertificate'{}.
 
 -type certificate_chain() :: [#'OTPCertificate'{}].
