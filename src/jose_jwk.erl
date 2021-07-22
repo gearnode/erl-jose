@@ -339,7 +339,7 @@ decode(x5t, Data, Options, #{jwk := JWK} = State) ->
   State1 =
     case maps:find(<<"x5t">>, Data) of
       error ->
-        JWK;
+        State;
       {ok, Value} ->
         case jose_x5t:decode(Value) of
           {ok, Thumbprint} ->
@@ -359,7 +359,7 @@ decode(x5t, Data, Options, #{jwk := JWK} = State) ->
   decode('x5t#S256', Data, Options, State1);
 
 %% https://tools.ietf.org/html/rfc7517#section-4.9
-decode('x5t#S256', Data, _, #{jwk := JWK} = State) ->
+decode('x5t#S256', Data, Options, #{jwk := JWK} = State) ->
   State1 =
     case maps:find(<<"x5t#S256">>, Data) of
       error ->
@@ -380,14 +380,16 @@ decode('x5t#S256', Data, _, #{jwk := JWK} = State) ->
             throw({error, {invalid_parameter, Reason, 'x5t#S256'}})
         end
     end,
-  #{jwk := JWK1} = State1,
-  case maps:get(kty, JWK1) of
+  decode(data, Data, Options, State1);
+
+decode(data, Data, _, #{jwk := JWK}) ->
+  case maps:get(kty, JWK) of
     oct ->
-      decode_oct(Data, JWK1);
+      decode_oct(Data, JWK);
     'RSA' ->
-      decode_rsa(Data, JWK1);
+      decode_rsa(Data, JWK);
     'EC' ->
-      decode_ec(Data, JWK1)
+      decode_ec(Data, JWK)
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.2
@@ -741,7 +743,8 @@ bytes_integer(Bin) when is_binary(Bin) ->
   <<Int:Length>> = Bin,
   Int.
 
--spec is_certificate_chain_trustable(jose:certificate_chain(), decode_options()) ->
+-spec is_certificate_chain_trustable(jose:certificate_chain(),
+                                     decode_options()) ->
         boolean().
 is_certificate_chain_trustable([Root | _], Options) ->
   Store = maps:get(certificate_store, Options, certificate_store_default),
