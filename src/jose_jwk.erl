@@ -14,7 +14,9 @@
 
 -module(jose_jwk).
 
--export([decode/1]).
+-include_lib("public_key/include/public_key.hrl").
+
+-export([decode/1, to_record/1]).
 
 -export_type([jwk/0,
               rsa/0,
@@ -160,9 +162,15 @@
       | x5u
       | x5c
       | x5t
-      | 'x5t#S256'.
+      | 'x5t#S256'
+      | data.
 
 -type decode_state() :: #{jwk => map(), cert => jose:certificate()}.
+
+-spec to_record(jwk()) -> term().
+to_record(#{kty := 'RSA'} = JWK) ->
+  #'RSAPublicKey'{modulus = maps:get(n, JWK),
+                  publicExponent = maps:get(e, JWK)}.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
