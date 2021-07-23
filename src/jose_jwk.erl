@@ -113,7 +113,6 @@
           'x5t#S256' => jose:certificate_thumbprint(),
           k := binary()}.
 
-
 % https://www.iana.org/assignments/jose/jose.xhtml#web-key-types
 -type type() :: 'RSA' | 'EC' | oct.
 
