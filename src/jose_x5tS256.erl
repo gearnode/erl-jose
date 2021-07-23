@@ -31,6 +31,16 @@
         {ok, binary()} | {error, decode_error_reason()}.
 decode(Bin) when is_binary(Bin) ->
   case b64url:decode(Bin, [nopad]) of
+    %% RFC 7517, Section 4.8 is ambiguous as to whether the digest output
+    %% should be byte or hex. Available implementations use byte other use
+    %% hex. To be compatible with all library we support both.
+    {ok, Hex} when byte_size(Hex) =:= 64 ->
+      try
+        {ok, binary:decode_hex(Hex)}
+      catch
+        error:badarg ->
+          {error, invalid_format}
+      end;
     {ok, Thumbprint} when byte_size(Thumbprint) =:= 32 ->
       {ok, Thumbprint};
     {ok, _} ->

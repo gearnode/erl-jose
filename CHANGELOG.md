@@ -20,7 +20,8 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ### Fixed
 - Fix media type without type returns an error.
 - Fix handling of unknown gen_server calls.
-- Support x5t with hex value instead of byte.
+- Support `x5t` with hex value instead of byte.
+- Support `x5t#S256` with hex value instead of byte.
 
 ## [0.1.0] (2021-01-18)
 ### Added
