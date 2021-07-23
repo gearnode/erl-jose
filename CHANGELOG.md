@@ -9,6 +9,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ### Added
 - Add `jose_jws:supported_crits/0` function.
 - Add JWK decoding.
+- Add JWK to Erlang records.
 
 ## Changed
 - Extract base64 encoding modules in dedicated library.

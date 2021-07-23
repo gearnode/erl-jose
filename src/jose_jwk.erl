@@ -183,6 +183,29 @@ to_record(#{kty := 'RSA', n := N, e := E}) ->
   #'RSAPublicKey'{modulus = N,
                   publicExponent = E};
 
+to_record(#{kty := 'EC', crv := CRV, x := X, y := Y, d := D}) ->
+  Curve =
+    case CRV of
+      'P-256' -> secp256r1;
+      'P-384' -> secp384r1;
+      'P-521' -> secp521r1
+    end,
+  #'ECPrivateKey'{version = 1,
+                  privateKey = D,
+                  parameters =
+                    {namedCurve, pubkey_cert_records:namedCurves(Curve)},
+                  publicKey = <<16#04, X/binary, Y/binary>>};
+
+to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
+  Curve =
+    case CRV of
+      'P-256' -> secp256r1;
+      'P-384' -> secp384r1;
+      'P-521' -> secp521r1
+    end,
+  PublicKey = #'ECPoint'{point = <<16#04, X/binary, Y/binary>>},
+  {PublicKey, pubkey_cert_records:namedCurves(Curve)};
+
 to_record(#{kty := oct, k := K}) ->
   K.
 
