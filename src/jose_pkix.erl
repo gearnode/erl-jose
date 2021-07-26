@@ -22,9 +22,16 @@
 
 -spec get_cert_pubkey(jose:certificate()) -> jose:public_key().
 get_cert_pubkey(Certificate) ->
-  Certificate#'OTPCertificate'.tbsCertificate
+  PubKey =
+    Certificate#'OTPCertificate'.tbsCertificate
     #'OTPTBSCertificate'.subjectPublicKeyInfo
-    #'OTPSubjectPublicKeyInfo'.subjectPublicKey.
+    #'OTPSubjectPublicKeyInfo'.subjectPublicKey,
+  case PubKey of
+    #'ECPoint'{} ->
+      {PubKey, {namedCurve, jose_crypto:get_ec_curve(PubKey)}};
+    _ ->
+      PubKey
+  end.
 
 -spec get_cert_chain_pubkey(jose:certificate_chain()) ->
         {ok, jose:public_key()} | {error, term()}.
