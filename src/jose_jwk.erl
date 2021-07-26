@@ -108,9 +108,6 @@
           key_ops => key_ops(),
           alg => jose_jwa:alg(),
           kid => jose:kid(),
-          x5u => uri:uri(),
-          x5c => [jose:certificate()],
-          x5t => jose:certificate_thumbprint(),
           'x5t#S256' => jose:certificate_thumbprint(),
           k := binary()}.
 
