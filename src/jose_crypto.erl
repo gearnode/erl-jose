@@ -14,23 +14,7 @@
 
 -module(jose_crypto).
 
--export([extract_pub_from_chain/1,
-         ec_point_to_coordinate/1, ec_coordinate_to_point/2]).
-
--include_lib("public_key/include/public_key.hrl").
-
--spec extract_pub_from_chain([term()]) ->
-        term().
-extract_pub_from_chain([]) ->
-  none;
-extract_pub_from_chain(Chain) ->
-  [Root | _] = Chain,
-  case public_key:pkix_path_validation(Root, Chain, []) of
-    {ok, {PublicKeyInfo, _}} ->
-      PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey;
-    {error, _Reason} ->
-      none
-  end.
+-export([ec_point_to_coordinate/1, ec_coordinate_to_point/2]).
 
 -spec ec_point_to_coordinate(binary()) -> {binary(), binary()}.
 ec_point_to_coordinate(<<16#04, X:32/binary, Y:32/binary>>) ->

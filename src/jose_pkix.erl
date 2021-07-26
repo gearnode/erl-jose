@@ -16,7 +16,7 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([get_cert_pubkey/1,
+-export([get_cert_pubkey/1, get_cert_chain_pubkey/1,
          privkey_to_pubkey/1,
          cert_thumbprint/1, cert_thumbprint256/1]).
 
@@ -25,6 +25,18 @@ get_cert_pubkey(Certificate) ->
   Certificate#'OTPCertificate'.tbsCertificate
     #'OTPTBSCertificate'.subjectPublicKeyInfo
     #'OTPSubjectPublicKeyInfo'.subjectPublicKey.
+
+-spec get_cert_chain_pubkey(jose:certificate_chain()) ->
+        {ok, jose:public_key()} | {error, term()}.
+get_cert_chain_pubkey([]) ->
+  {error, invalid_certificate_chain};
+get_cert_chain_pubkey([Root | _] = Chain) ->
+  case public_key:pkix_path_validation(Root, Chain, []) of
+    {ok, {PublicKeyInfo, _}} ->
+      PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey;
+    {error, Reason} ->
+      {error, {invalid_certificate_chain, Reason}}
+  end.
 
 -spec privkey_to_pubkey(jose:public_key() | jose:private_key()) ->
         jose:public_key().

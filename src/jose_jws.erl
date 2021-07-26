@@ -429,9 +429,9 @@ collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= rs256;
   [Root | _] = Chain,
   case jose_certificate_store:find(certificate_store_default, Root) of
     {ok, _} ->
-      case jose_crypto:extract_pub_from_chain(Chain) of
-        {'RSAPublicKey', _, _} = PubKey -> [PubKey | Acc];
-        _Else -> Acc
+      case jose_pkix:get_cert_chain_pubkey(Chain) of
+        {ok, PubKey} -> [PubKey | Acc];
+        {error, _} -> Acc
       end;
     error ->
       Acc
@@ -442,9 +442,9 @@ collect_potential_verify_keys(x5c, Chain, Acc, Alg) when Alg =:= es256;
   [Root | _] = Chain,
   case jose_certificate_store:find(certificate_store_default, Root) of
     {ok, _} ->
-      case jose_crypto:extract_pub_from_chain(Chain) of
-        {{'ECPoint', _}, _} = PubKey -> [PubKey | Acc];
-        _Else -> Acc
+      case jose_pkix:get_cert_chain_pubkey(Chain) of
+        {ok, PubKey} -> [PubKey | Acc];
+        {error, _} -> Acc
       end;
     error ->
       Acc
