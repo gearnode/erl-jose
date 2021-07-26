@@ -163,4 +163,24 @@ encode('x5t#S256', JWK, Options, State) ->
   encode(key_data, JWK, Options, State1);
 
 encode(key_data, JWK, Options, State) ->
+  case maps:get(kty, JWK) of
+    oct ->
+      encode_oct(JWK, Options, State);
+    'RSA' ->
+      encode_rsa(JWK, Options, State);
+    'EC' ->
+      encode_ec(JWK, Options, State)
+  end.
+
+-spec encode_oct(jose_jwk:jwk(), options(), state()) -> state().
+encode_oct(JWK, _, State) ->
+  Value = b64url:decode(maps:get(k, JWK), [nopad]),
+  State#{<<"k">> => Value}.
+
+-spec encode_ec(jose_jwk:jwk(), options(), state()) -> state().
+encode_ec(_, _, State) ->
+  State.
+
+-spec encode_rsa(jose_jwk:jwk(), options(), state()) -> state().
+encode_rsa(_, _, State) ->
   State.
