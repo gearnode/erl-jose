@@ -14,8 +14,6 @@
 
 -module(jose_x5u).
 
--include_lib("public_key/include/public_key.hrl").
-
 -export([decode/2]).
 
 -export_type([decode_error_reason/0]).
