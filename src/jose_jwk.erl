@@ -16,7 +16,8 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([decode/1, to_record/1]).
+-export([decode/1,
+         to_record/1, from_record/1]).
 
 -export_type([jwk/0,
               rsa/0,
@@ -181,6 +182,42 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
   {PublicKey, pubkey_cert_records:namedCurves(Curve)};
 to_record(#{kty := oct, k := K}) ->
   K.
+
+-spec from_record(jose:public_key() | jose:private_key()) -> jwk().
+from_record(#'RSAPublicKey'{modulus = N, publicExponent = E}) ->
+  #{kty => 'RSA', n => N, e => E};
+from_record(#'RSAPrivateKey'{} = K) ->
+  Data = #{kty => 'RSA',
+           n => K#'RSAPrivateKey'.modulus,
+           e => K#'RSAPrivateKey'.publicExponent,
+           d => K#'RSAPrivateKey'.privateExponent,
+           p => K#'RSAPrivateKey'.prime1,
+           q => K#'RSAPrivateKey'.prime2,
+           dp => K#'RSAPrivateKey'.exponent1,
+           dq => K#'RSAPrivateKey'.exponent2,
+           coefficient => K#'RSAPrivateKey'.coefficient},
+  maps:filter(fun (_, V) -> V =/= undefined end, Data);
+from_record({#'ECPoint'{} = K, {namedCurve, Curve}}) ->
+  {X, Y} = ec_point_to_coordinate(K#'ECPoint'.point),
+  #{kty => 'EC',
+    crv => pubkey_cert_records:namedCurves(Curve),
+    x => X,
+    y => Y};
+from_record(#'ECPrivateKey'{parameters = {namedCurve, Curve}} = K) ->
+  {X, Y} = ec_point_to_coordinate(K#'ECPrivateKey'.publicKey),
+  #{kty => 'EC',
+    crv => pubkey_cert_records:namedCurves(Curve),
+    d => K#'ECPrivateKey'.privateKey,
+    x => X,
+    y => Y}.
+
+-spec ec_point_to_coordinate(binary()) -> {binary(), binary()}.
+ec_point_to_coordinate(<<16#04, X:32/binary, Y:32/binary>>) ->
+  {X, Y};
+ec_point_to_coordinate(<<16#04, X:48/binary, Y:32/binary>>) ->
+  {X, Y};
+ec_point_to_coordinate(<<16#04, X:66/binary, Y:66/binary>>) ->
+  {X, Y}.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
