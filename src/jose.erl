@@ -18,13 +18,21 @@
 
 -export_type([header_parameter_name/0,
               kid/0,
-              certificate_thumbprint/0,
-              certificate/0,
-              certificate_chain/0]).
+              certificate_thumbprint/0, certificate/0, certificate_chain/0,
+              public_key/0, private_key/0]).
 
 -type header_parameter_name() :: binary().
+
 -type kid() :: binary().
+
 -type certificate_thumbprint() :: binary().
+
 -type certificate() :: #'OTPCertificate'{}.
 
--type certificate_chain() :: [#'OTPCertificate'{}].
+-type certificate_chain() :: [certificate()].
+
+-type public_key() :: #'RSAPublicKey'{}
+                    | {#'ECPoint'{}, Curve :: term()}.
+
+-type private_key() :: #'RSAPrivateKey'{}
+                     | #'ECPrivateKey'{}.
