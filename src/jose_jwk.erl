@@ -155,11 +155,9 @@ to_record(#{kty := 'RSA', n := N, e := E, d := D} = JWK) ->
                    exponent1 = maps:get(dp, JWK, undefined),
                    exponent2 = maps:get(dq, JWK, undefined),
                    coefficient = maps:get(qi, JWK, undefined)};
-
 to_record(#{kty := 'RSA', n := N, e := E}) ->
   #'RSAPublicKey'{modulus = N,
                   publicExponent = E};
-
 to_record(#{kty := 'EC', crv := CRV, x := X, y := Y, d := D}) ->
   Curve =
     case CRV of
@@ -172,7 +170,6 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y, d := D}) ->
                   parameters =
                     {namedCurve, pubkey_cert_records:namedCurves(Curve)},
                   publicKey = <<16#04, X/binary, Y/binary>>};
-
 to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
   Curve =
     case CRV of
@@ -182,7 +179,6 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
     end,
   PublicKey = #'ECPoint'{point = <<16#04, X/binary, Y/binary>>},
   {PublicKey, pubkey_cert_records:namedCurves(Curve)};
-
 to_record(#{kty := oct, k := K}) ->
   K.
 
