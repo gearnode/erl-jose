@@ -12,6 +12,11 @@
 %% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 %% IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+%% References:
+%%
+%% JWK -> https://tools.ietf.org/html/rfc7517#section-4.7
+%% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.6
+%% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.8
 -module(jose_x5c).
 
 -export([decode/1, encode/1]).
@@ -20,11 +25,6 @@
 
 -type decode_error_reason() :: invalid_format | {invalid_format, term()}.
 
-%% References:
-%%
-%% JWK -> https://tools.ietf.org/html/rfc7517#section-4.7
-%% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.6
-%% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.8
 -spec decode([binary()]) ->
         {ok, jose:certificate_chain()} | {error, decode_error_reason()}.
 decode(Value) when is_list(Value) ->
@@ -45,11 +45,6 @@ decode(Value) when is_list(Value) ->
 decode(_) ->
   {error, invalid_format}.
 
-%% References:
-%%
-%% JWK -> https://tools.ietf.org/html/rfc7517#section-4.7
-%% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.6
-%% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.8
 -spec encode(jose:certificate_chain()) -> [binary()].
 encode(CertificateChain) when is_list(CertificateChain) ->
   encode(CertificateChain, []).
