@@ -11,6 +11,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 - Add JWK decoding (RSA, OCT and EC).
 - Add JWK to Erlang records.
 - Add JWK Set support.
+- Add JWK from Erlang records.
 
 ## Changed
 - Extract base64 encoding modules in dedicated library.
