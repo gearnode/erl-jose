@@ -17,7 +17,8 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -export([decode/1,
-         to_record/1, from_record/1]).
+         to_record/1, from_record/1,
+         from_certificate_chain/1]).
 
 -export_type([jwk/0,
               rsa/0,
@@ -213,6 +214,12 @@ from_record(#'OTPCertificate'{} = C) ->
   PubKey = jose_pkix:get_cert_pubkey(C),
   Data = from_record(PubKey),
   Data#{x5t => SHA1, 'x5t#S256' => SHA2}.
+
+-spec from_certificate_chain(jose:certificate_chain()) -> jwk().
+from_certificate_chain(Chain) ->
+  Certificate = lists:last(Chain),
+  Data = from_record(Certificate),
+  Data#{x5c => Chain}.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
