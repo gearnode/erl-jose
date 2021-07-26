@@ -162,7 +162,8 @@
       | x5c
       | x5t
       | 'x5t#S256'
-      | data.
+      | key_data
+      | validate.
 
 -type decode_state() :: #{jwk => map(), cert => jose:certificate()}.
 
@@ -424,17 +425,34 @@ decode('x5t#S256', Data, Options, #{jwk := JWK} = State) ->
             throw({error, {invalid_parameter, Reason, 'x5t#S256'}})
         end
     end,
-  decode(data, Data, Options, State1);
+  decode(key_data, Data, Options, State1);
 
-decode(data, Data, _, #{jwk := JWK}) ->
-  case maps:get(kty, JWK) of
-    oct ->
-      decode_oct(Data, JWK);
-    'RSA' ->
-      decode_rsa(Data, JWK);
-    'EC' ->
-      decode_ec(Data, JWK)
-  end.
+decode(key_data, Data, Options, #{jwk := JWK} = State) ->
+  JWK1 =
+    case maps:get(kty, JWK) of
+      oct ->
+        decode_oct(Data, JWK);
+      'RSA' ->
+        decode_rsa(Data, JWK);
+      'EC' ->
+        decode_ec(Data, JWK)
+    end,
+  decode(validate, Data, Options, State#{jwk => JWK1});
+
+decode(validate, _, _, #{jwk := #{kty := oct}, cert := _}) ->
+  throw({error, {invalid_jwk, oct_cannot_have_certificate_chain}});
+decode(validate, _, _, #{jwk := JWK, cert := Cert}) ->
+  KeyPub = jose_pkix:privkey_to_pubkey(to_record(JWK)),
+  CertPub = jose_pkix:get_cert_pubkey(Cert),
+  case KeyPub =:= CertPub of
+    true ->
+      JWK;
+    false ->
+      throw({error,
+             {invalid_jwk, public_key_not_match_cert_certificate_chain}})
+  end;
+decode(validate, _, _, #{jwk := JWK}) ->
+  JWK.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.2
 -spec decode_ec(map(), map()) -> ec().
