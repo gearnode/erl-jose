@@ -53,4 +53,4 @@ decode(_) ->
 
 -spec encode(jose:certificate_thumbprint()) -> binary().
 encode(SHA) ->
-  b64url:encode(SHA).
+  b64url:encode(SHA, [nopad]).
