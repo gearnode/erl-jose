@@ -8,7 +8,7 @@ Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to
 ## [Unreleased]
 ### Added
 - Add `jose_jws:supported_crits/0` function.
-- Add JWK decoding.
+- Add JWK decoding (RSA, OCT and EC).
 - Add JWK to Erlang records.
 - Add JWK Set support.
 
