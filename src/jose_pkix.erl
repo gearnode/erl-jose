@@ -37,12 +37,12 @@ privkey_to_pubkey(#'ECPrivateKey'{parameters = {namedCurve, Curve},
                                   publicKey = PubKey}) ->
   {#'ECPoint'{point = PubKey}, Curve}.
   
--spec cert_thumbprint(jose:certificate()) -> binary().
+-spec cert_thumbprint(jose:certificate()) -> jose:certificate_thumbprint().
 cert_thumbprint(Certificate) ->
   Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
   crypto:hash(sha, Der).
 
--spec cert_thumbprint256(jose:certificate()) -> binary().
+-spec cert_thumbprint256(jose:certificate()) -> jose:certificate_thumbprint().
 cert_thumbprint256(Certificate) ->
   Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
   crypto:hash(sha256, Der).
