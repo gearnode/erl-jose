@@ -180,6 +180,7 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
     end,
   PublicKey = #'ECPoint'{point = <<16#04, X/binary, Y/binary>>},
   {PublicKey, pubkey_cert_records:namedCurves(Curve)};
+  {PublicKey, {namedCurve, pubkey_cert_records:namedCurves(Curve)}};
 to_record(#{kty := oct, k := K}) ->
   K.
 
