@@ -20,13 +20,14 @@
          privkey_to_pubkey/1,
          cert_thumbprint/1, cert_thumbprint256/1]).
 
--spec get_cert_pubkey(jose:certificate()) -> term().
+-spec get_cert_pubkey(jose:certificate()) -> jose:public_key().
 get_cert_pubkey(Certificate) ->
   Certificate#'OTPCertificate'.tbsCertificate
     #'OTPTBSCertificate'.subjectPublicKeyInfo
     #'OTPSubjectPublicKeyInfo'.subjectPublicKey.
 
--spec privkey_to_pubkey(term()) -> term().
+-spec privkey_to_pubkey(jose:public_key() | jose:private_key()) ->
+        jose:public_key().
 privkey_to_pubkey(#'RSAPublicKey'{} = PubKey) ->
   PubKey;
 privkey_to_pubkey(#'RSAPrivateKey'{modulus = N, publicExponent = E}) ->
