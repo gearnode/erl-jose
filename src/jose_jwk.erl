@@ -226,7 +226,7 @@ decode(Bin, Options) when is_binary(Bin) ->
   end;
 decode(Data, Options) when is_map(Data) ->
   try
-    decode(kty, Data, Options, #{})
+    {ok, decode(kty, Data, Options, #{})}
   catch
     throw:{error, Reason} ->
       {error, Reason}
