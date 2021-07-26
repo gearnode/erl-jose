@@ -16,7 +16,9 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([get_cert_pubkey/1, privkey_to_pubkey/1]).
+-export([get_cert_pubkey/1,
+         privkey_to_pubkey/1,
+         cert_thumbprint/1, cert_thumbprint256/1]).
 
 -spec get_cert_pubkey(jose:certificate()) -> term().
 get_cert_pubkey(Certificate) ->
@@ -35,3 +37,12 @@ privkey_to_pubkey(#'ECPrivateKey'{parameters = {namedCurve, Curve},
                                   publicKey = PubKey}) ->
   {#'ECPoint'{point = PubKey}, Curve}.
   
+-spec cert_thumbprint(jose:certificate()) -> binary().
+cert_thumbprint(Certificate) ->
+  Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
+  crypto:hash(sha, Der).
+
+-spec cert_thumbprint256(jose:certificate()) -> binary().
+cert_thumbprint256(Certificate) ->
+  Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
+  crypto:hash(sha256, Der).

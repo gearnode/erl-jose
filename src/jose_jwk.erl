@@ -390,7 +390,7 @@ decode(x5t, Data, Options, #{jwk := JWK} = State) ->
           {ok, Thumbprint} ->
             case maps:find(cert, State) of
               {ok, Certificate} ->
-                certificate_thumbprint(Certificate) =:= Thumbprint orelse
+                jose_pkix:cert_thumbprint(Certificate) =:= Thumbprint orelse
                   throw({error,
                          {invalid_parameter, thumbprint_not_match, x5t}}),
                 State#{jwk => JWK#{x5t => Thumbprint}};
@@ -414,7 +414,7 @@ decode('x5t#S256', Data, Options, #{jwk := JWK} = State) ->
           {ok, Thumbprint} ->
             case maps:find(cert, State) of
               {ok, Certificate} ->
-                certificate_thumbprint256(Certificate) =:= Thumbprint orelse
+                jose_pkix:cert_thumbprint256(Certificate) =:= Thumbprint orelse
                   throw({error,
                          {invalid_parameter, thumbprint_not_match, 'x5t#S256'}}),
                 State#{jwk => JWK#{'x5t#S256' => Thumbprint}};
@@ -816,13 +816,3 @@ is_certificate_chain_trustable([Root | _], Options) ->
     error ->
       false
   end.
-
--spec certificate_thumbprint(jose:certificate()) -> binary().
-certificate_thumbprint(Certificate) ->
-  Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
-  crypto:hash(sha, Der).
-
--spec certificate_thumbprint256(jose:certificate()) -> binary().
-certificate_thumbprint256(Certificate) ->
-  Der = public_key:pkix_encode('OTPCertificate', Certificate, otp),
-  crypto:hash(sha256, Der).
