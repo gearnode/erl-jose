@@ -28,7 +28,9 @@ get_cert_pubkey(Certificate) ->
     #'OTPSubjectPublicKeyInfo'.subjectPublicKey,
   case PubKey of
     #'ECPoint'{} ->
-      {PubKey, {namedCurve, jose_crypto:get_ec_curve(PubKey)}};
+      Curve =
+        pubkey_cert_records:namedCurves(jose_crypto:get_ec_curve(PubKey)),
+      {PubKey, {namedCurve, Curve}};
     _ ->
       PubKey
   end.
