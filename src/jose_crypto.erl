@@ -14,19 +14,9 @@
 
 -module(jose_crypto).
 
--export([extract_pub_from_cert/1,
-         extract_pub_from_chain/1]).
-
--export_type([]).
+-export([extract_pub_from_chain/1]).
 
 -include_lib("public_key/include/public_key.hrl").
-
--spec extract_pub_from_cert(term()) ->
-        term().
-extract_pub_from_cert(Cert) ->
-  Cert#'OTPCertificate'.tbsCertificate
-    #'OTPTBSCertificate'.subjectPublicKeyInfo
-    #'OTPSubjectPublicKeyInfo'.subjectPublicKey.
 
 -spec extract_pub_from_chain([term()]) ->
         term().

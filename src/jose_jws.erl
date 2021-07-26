@@ -378,7 +378,7 @@ collect_potential_verify_keys(x5t, Fingerprint, Acc, Alg) when Alg =:= rs256;
                                                                Alg =:= rs512 ->
   case jose_certificate_store:find(certificate_store_default, {sha1, Fingerprint}) of
     {ok, Cert} ->
-      case jose_crypto:extract_pub_from_cert(Cert) of
+      case jose_pkix:get_cert_pubkey(Cert) of
         {'RSAPublicKey', _, _} = Key -> [Key | Acc];
         _Else -> Acc
       end;
@@ -390,7 +390,7 @@ collect_potential_verify_keys(x5t, Fingerprint, Acc, Alg) when Alg =:= es256;
                                                                Alg =:= es521 ->
   case jose_certificate_store:find(certificate_store_default, {sha1, Fingerprint}) of
     {ok, Cert} ->
-      case jose_crypto:extract_pub_from_cert(Cert) of
+      case jose_pkix:get_cert_pubkey(Cert) of
         {{'ECPoint', _}, _} = PubKey -> [PubKey | Acc];
         _Else -> Acc
       end;
@@ -402,7 +402,7 @@ collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= rs
                                                                       Alg =:= rs512 ->
   case jose_certificate_store:find(certificate_store_default, {sha2, Fingerprint}) of
     {ok, Cert} ->
-      case jose_crypto:extract_pub_from_cert(Cert) of
+      case jose_pkix:get_cert_pubkey(Cert) of
         {'RSAPublicKey', _, _} = PubKey -> [PubKey | Acc];
         _Else -> Acc
       end;
@@ -414,7 +414,7 @@ collect_potential_verify_keys('x5t#S256', Fingerprint, Acc, Alg) when Alg =:= es
                                                                       Alg =:= es521 ->
   case jose_certificate_store:find(certificate_store_default, {sha2, Fingerprint}) of
     {ok, Cert} ->
-      case jose_crypto:extract_pub_from_cert(Cert) of
+      case jose_pkix:get_cert_pubkey(Cert) of
         {{'ECPoint', _}, _} = PubKey -> [PubKey | Acc];
         _Else -> Acc
       end;
