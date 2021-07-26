@@ -16,7 +16,7 @@
 
 -include_lib("public_key/include/public_key.hrl").
 
--export([decode/1,
+-export([decode/1, decode/2,
          to_record/1, from_record/1,
          from_certificate_chain/1]).
 
