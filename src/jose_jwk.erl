@@ -170,7 +170,7 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y, d := D}) ->
                   privateKey = D,
                   parameters =
                     {namedCurve, pubkey_cert_records:namedCurves(Curve)},
-                  publicKey = <<16#04, X/binary, Y/binary>>};
+                  publicKey = ec_coordinate_to_point(X, Y)};
 to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
   Curve =
     case CRV of
@@ -178,8 +178,7 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
       'P-384' -> secp384r1;
       'P-521' -> secp521r1
     end,
-  PublicKey = #'ECPoint'{point = <<16#04, X/binary, Y/binary>>},
-  {PublicKey, pubkey_cert_records:namedCurves(Curve)};
+  PublicKey = #'ECPoint'{point = ec_coordinate_to_point(X, Y)},
   {PublicKey, {namedCurve, pubkey_cert_records:namedCurves(Curve)}};
 to_record(#{kty := oct, k := K}) ->
   K.
@@ -219,6 +218,10 @@ ec_point_to_coordinate(<<16#04, X:48/binary, Y:32/binary>>) ->
   {X, Y};
 ec_point_to_coordinate(<<16#04, X:66/binary, Y:66/binary>>) ->
   {X, Y}.
+
+-spec ec_coordinate_to_point(binary(), binary()) -> binary().
+ec_coordinate_to_point(X, Y) ->
+  <<16#04, X/binary, Y/binary>>.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
