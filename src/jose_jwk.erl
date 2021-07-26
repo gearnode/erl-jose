@@ -17,6 +17,7 @@
 -include_lib("public_key/include/public_key.hrl").
 
 -export([decode/1, decode/2,
+         encode/1, encode/2,
          to_record/1, from_record/1,
          from_certificate_chain/1]).
 
@@ -230,3 +231,12 @@ decode(Term) ->
         {ok, jwk()} | {error, term()}.
 decode(Term, Options) ->
   jose_jwk_decoder:decode(Term, Options).
+
+-spec encode(jwk()) -> binary().
+encode(JWK) ->
+  encode(JWK, #{}).
+
+-spec encode(jwk(), jose_jwk_encoder:options()) -> binary() | map().
+encode(JWK, Options) ->
+  jose_jwk_encoder:encode(JWK, Options).
+
