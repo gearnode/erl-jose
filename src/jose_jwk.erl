@@ -180,7 +180,7 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
 to_record(#{kty := oct, k := K}) ->
   K.
 
--spec from_record(jose:public_key() | jose:private_key()) -> jwk().
+-spec from_record(jose:public_key() | jose:private_key() | jose:certificate()) -> jwk().
 from_record(#'RSAPublicKey'{modulus = N, publicExponent = E}) ->
   #{kty => 'RSA', n => N, e => E};
 from_record(#'RSAPrivateKey'{} = K) ->
@@ -206,7 +206,13 @@ from_record(#'ECPrivateKey'{parameters = {namedCurve, Curve}} = K) ->
     crv => pubkey_cert_records:namedCurves(Curve),
     d => K#'ECPrivateKey'.privateKey,
     x => X,
-    y => Y}.
+    y => Y};
+from_record(#'OTPCertificate'{} = C) ->
+  SHA1 = jose_pkix:cert_thumbprint(C),
+  SHA2 = jose_pkix:cert_thumbprint256(C),
+  PubKey = jose_pkix:get_cert_pubkey(C),
+  Data = from_record(PubKey),
+  Data#{x5t => SHA1, 'x5t#S256' => SHA2}.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
