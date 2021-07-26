@@ -12,9 +12,14 @@
 %% ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
 %% IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+%% References:
+%%
+%% JWK -> https://tools.ietf.org/html/rfc7517#section-4.8
+%% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.7
+%% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.9
 -module(jose_x5t).
 
--export([decode/1]).
+-export([decode/1, encode/1]).
 
 -export_type([decode_error_reason/0]).
 
@@ -22,11 +27,6 @@
         invalid_format
       | {invalid_format, term()}.
 
-%% References:
-%%
-%% JWK -> https://tools.ietf.org/html/rfc7517#section-4.8
-%% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.7
-%% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.9
 -spec decode(binary()) ->
         {ok, binary()} | {error, decode_error_reason()}.
 decode(Bin) when is_binary(Bin) ->
@@ -50,3 +50,7 @@ decode(Bin) when is_binary(Bin) ->
   end;
 decode(_) ->
   {error, invalid_format}.
+
+-spec encode(jose:certificate_thumbprint()) -> binary().
+encode(SHA) ->
+  b64url:encode(SHA).
