@@ -14,7 +14,8 @@
 
 -module(jose_crypto).
 
--export([extract_pub_from_chain/1]).
+-export([extract_pub_from_chain/1,
+         ec_point_to_coordinate/1, ec_coordinate_to_point/2]).
 
 -include_lib("public_key/include/public_key.hrl").
 
@@ -30,3 +31,15 @@ extract_pub_from_chain(Chain) ->
     {error, _Reason} ->
       none
   end.
+
+-spec ec_point_to_coordinate(binary()) -> {binary(), binary()}.
+ec_point_to_coordinate(<<16#04, X:32/binary, Y:32/binary>>) ->
+  {X, Y};
+ec_point_to_coordinate(<<16#04, X:48/binary, Y:32/binary>>) ->
+  {X, Y};
+ec_point_to_coordinate(<<16#04, X:66/binary, Y:66/binary>>) ->
+  {X, Y}.
+
+-spec ec_coordinate_to_point(binary(), binary()) -> binary().
+ec_coordinate_to_point(X, Y) ->
+  <<16#04, X/binary, Y/binary>>.

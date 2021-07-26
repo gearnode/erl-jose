@@ -167,7 +167,7 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y, d := D}) ->
                   privateKey = D,
                   parameters =
                     {namedCurve, pubkey_cert_records:namedCurves(Curve)},
-                  publicKey = ec_coordinate_to_point(X, Y)};
+                  publicKey = jose_crypto:ec_coordinate_to_point(X, Y)};
 to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
   Curve =
     case CRV of
@@ -175,7 +175,7 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
       'P-384' -> secp384r1;
       'P-521' -> secp521r1
     end,
-  PublicKey = #'ECPoint'{point = ec_coordinate_to_point(X, Y)},
+  PublicKey = #'ECPoint'{point = jose_crypto:ec_coordinate_to_point(X, Y)},
   {PublicKey, {namedCurve, pubkey_cert_records:namedCurves(Curve)}};
 to_record(#{kty := oct, k := K}) ->
   K.
@@ -195,30 +195,18 @@ from_record(#'RSAPrivateKey'{} = K) ->
            coefficient => K#'RSAPrivateKey'.coefficient},
   maps:filter(fun (_, V) -> V =/= undefined end, Data);
 from_record({#'ECPoint'{} = K, {namedCurve, Curve}}) ->
-  {X, Y} = ec_point_to_coordinate(K#'ECPoint'.point),
+  {X, Y} = jose_crypto:ec_point_to_coordinate(K#'ECPoint'.point),
   #{kty => 'EC',
     crv => pubkey_cert_records:namedCurves(Curve),
     x => X,
     y => Y};
 from_record(#'ECPrivateKey'{parameters = {namedCurve, Curve}} = K) ->
-  {X, Y} = ec_point_to_coordinate(K#'ECPrivateKey'.publicKey),
+  {X, Y} = jose_crypto:ec_point_to_coordinate(K#'ECPrivateKey'.publicKey),
   #{kty => 'EC',
     crv => pubkey_cert_records:namedCurves(Curve),
     d => K#'ECPrivateKey'.privateKey,
     x => X,
     y => Y}.
-
--spec ec_point_to_coordinate(binary()) -> {binary(), binary()}.
-ec_point_to_coordinate(<<16#04, X:32/binary, Y:32/binary>>) ->
-  {X, Y};
-ec_point_to_coordinate(<<16#04, X:48/binary, Y:32/binary>>) ->
-  {X, Y};
-ec_point_to_coordinate(<<16#04, X:66/binary, Y:66/binary>>) ->
-  {X, Y}.
-
--spec ec_coordinate_to_point(binary(), binary()) -> binary().
-ec_coordinate_to_point(X, Y) ->
-  <<16#04, X/binary, Y/binary>>.
 
 -spec decode(binary() | map()) ->
         {ok, jwk()} | {error, term()}.
