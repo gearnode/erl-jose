@@ -14,16 +14,10 @@
 
 -module(jose_x5c).
 
--include_lib("public_key/include/public_key.hrl").
+-export([decode/1, encode/1]).
 
--export([decode/1]).
+-export_type([decode_error_reason/0]).
 
--export_type([encoded_chain/0, decoded_chain/0,
-              decode_error_reason/0]).
-              
-
--type encoded_chain() :: [binary()].
--type decoded_chain() :: [#'OTPCertificate'{}].
 -type decode_error_reason() :: invalid_format | {invalid_format, term()}.
 
 %% References:
@@ -31,8 +25,8 @@
 %% JWK -> https://tools.ietf.org/html/rfc7517#section-4.7
 %% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.6
 %% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.8
--spec decode(encoded_chain()) ->
-        {ok, decoded_chain()} | {error, decode_error_reason()}.
+-spec decode([binary()]) ->
+        {ok, jose:certificate_chain()} | {error, decode_error_reason()}.
 decode(Value) when is_list(Value) ->
   case decode(Value, []) of
     {ok, []} ->
@@ -51,9 +45,18 @@ decode(Value) when is_list(Value) ->
 decode(_) ->
   {error, invalid_format}.
 
--spec decode(encoded_chain(), Acc) ->
+%% References:
+%%
+%% JWK -> https://tools.ietf.org/html/rfc7517#section-4.7
+%% JWS -> https://tools.ietf.org/html/rfc7515#section-4.1.6
+%% JWE -> https://tools.ietf.org/html/rfc7516#section-4.1.8
+-spec encode(jose:certificate_chain()) -> [binary()].
+encode(CertificateChain) when is_list(CertificateChain) ->
+  encode(CertificateChain, []).
+
+-spec decode([binary()], Acc) ->
         {ok, Acc} | {error, decode_error_reason()}
-          when Acc :: decoded_chain().
+          when Acc :: jose:certificate_chain().
 decode([], Acc) ->
   {ok, Acc};
 decode([H | T], Acc) when is_binary(H) ->
@@ -71,5 +74,10 @@ decode([H | T], Acc) when is_binary(H) ->
   end;
 decode(_, _) ->
   {error, invalid_format}.
-     
-    
+
+-spec encode(jose:certificate_chain(), [binary()]) -> [binary()].
+encode([], Acc) ->
+  Acc;
+encode([H | T], Acc) ->
+  Value = b64:encode(public_key:pkix_encode('OTPCertificate', H, otp)),
+  encode(T, [Value | Acc]).
