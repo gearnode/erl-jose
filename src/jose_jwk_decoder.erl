@@ -189,9 +189,9 @@ decode(x5c, Data, Options, #{jwk := JWK} = State) ->
           {ok, []} ->
             State;
           {ok, Chain} ->
-            %% is_certificate_chain_trustable(Chain, Options) orelse
-            %%   throw({error, {invalid_parameter,
-            %%                  {bad_cert, untrusted_cert}, x5c}}),
+            is_certificate_chain_trustable(Chain, Options) orelse
+              throw({error, {invalid_parameter,
+                             {bad_cert, untrusted_cert}, x5c}}),
             Certificate = lists:last(Chain),
             case maps:find(cert, State) of
               {ok, Certificate} ->
