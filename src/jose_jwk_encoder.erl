@@ -173,13 +173,47 @@ encode(key_data, JWK, Options, State) ->
   end.
 
 -spec encode_oct(jose_jwk:jwk(), options(), state()) -> state().
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.4.1
 encode_oct(JWK, _, State) ->
   Value = b64url:decode(maps:get(k, JWK), [nopad]),
   State#{<<"k">> => Value}.
 
 -spec encode_ec(jose_jwk:jwk(), options(), state()) -> state().
-encode_ec(_, _, State) ->
-  State.
+encode_ec(JWK, Options, State) ->
+  encode_ec(crv, JWK, Options, State).
+
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.1
+encode_ec(crv, JWK, Options, State) ->
+  Value =
+    case maps:get(crv, JWK) of
+      'P-256' ->
+        <<"P-256">>;
+      'P-384' ->
+        <<"P-384">>;
+      'P-521' ->
+        <<"P-521">>
+    end,
+  encode_ec(x, JWK, Options, State#{<<"crv">> => Value});
+
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.2
+encode_ec(x, JWK, Options, State) ->
+  Value = b64url:encode(maps:get(x, JWK), [nopad]),
+  encode_ec(y, JWK, Options, State#{<<"x">> => Value});
+
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.1.3
+encode_ec(y, JWK, Options, State) ->
+  Value = b64url:encode(maps:get(y, JWK), [nopad]),
+  encode_ec(d, JWK, Options, State#{<<"y">> => Value});
+
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.2.2.1
+encode_ec(d, JWK, _, State) ->
+  case maps:find(d, JWK) of
+    error ->
+      State;
+    {ok, D} when is_binary(D) ->
+      Value = b64url:encode(D, [nopad]),
+      State#{<<"d">> => Value}
+  end.
 
 -spec encode_rsa(jose_jwk:jwk(), options(), state()) -> state().
 encode_rsa(_, _, State) ->
