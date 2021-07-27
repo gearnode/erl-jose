@@ -57,7 +57,9 @@ decode(Data, Options) when is_map(Data) ->
   catch
     throw:{error, Reason} ->
       {error, Reason}
-  end.
+  end;
+decode(_, _) ->
+  {error, invalid_format}.
 
 -spec decode(step(), map(), options(), state()) -> jose:jwk().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
