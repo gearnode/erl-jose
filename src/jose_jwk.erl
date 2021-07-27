@@ -197,7 +197,7 @@ from_record(#'RSAPrivateKey'{} = K) ->
            q => K#'RSAPrivateKey'.prime2,
            dp => K#'RSAPrivateKey'.exponent1,
            dq => K#'RSAPrivateKey'.exponent2,
-           coefficient => K#'RSAPrivateKey'.coefficient},
+           qi => K#'RSAPrivateKey'.coefficient},
   maps:filter(fun (_, V) -> V =/= undefined end, Data);
 from_record({#'ECPoint'{} = K, {namedCurve, Curve}}) ->
   {X, Y} = jose_crypto:ec_point_to_coordinate(K#'ECPoint'.point),
