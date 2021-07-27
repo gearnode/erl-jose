@@ -503,7 +503,7 @@ decode_rsa(qi, Data, State) ->
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, QI} ->
-          State1 = State#{qi => QI},
+          State1 = State#{qi => bytes_integer(QI)},
           decode_rsa(oth, Data, State1);
         {error, Reason} ->
           throw({error, {invalid_parameter, Reason, qi}})
