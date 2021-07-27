@@ -182,7 +182,10 @@ to_record(#{kty := 'EC', crv := CRV, x := X, y := Y}) ->
 to_record(#{kty := oct, k := K}) ->
   K.
 
--spec from_record(jose:public_key() | jose:private_key() | jose:certificate()) -> jwk().
+-spec from_record(Term) -> jwk()
+          when Term :: jose:public_key()
+                     | jose:private_key()
+                     | jose:certificate().
 from_record(#'RSAPublicKey'{modulus = N, publicExponent = E}) ->
   #{kty => 'RSA', n => N, e => E};
 from_record(#'RSAPrivateKey'{} = K) ->
