@@ -189,16 +189,27 @@ to_record(#{kty := oct, k := K}) ->
 from_record(#'RSAPublicKey'{modulus = N, publicExponent = E}) ->
   #{kty => 'RSA', n => N, e => E};
 from_record(#'RSAPrivateKey'{} = K) ->
-  Data = #{kty => 'RSA',
-           n => K#'RSAPrivateKey'.modulus,
-           e => K#'RSAPrivateKey'.publicExponent,
-           d => K#'RSAPrivateKey'.privateExponent,
-           p => K#'RSAPrivateKey'.prime1,
-           q => K#'RSAPrivateKey'.prime2,
-           dp => K#'RSAPrivateKey'.exponent1,
-           dq => K#'RSAPrivateKey'.exponent2,
-           qi => K#'RSAPrivateKey'.coefficient},
-  maps:filter(fun (_, V) -> V =/= undefined end, Data);
+  Data0 = #{kty => 'RSA',
+            n => K#'RSAPrivateKey'.modulus,
+            e => K#'RSAPrivateKey'.publicExponent,
+            d => K#'RSAPrivateKey'.privateExponent,
+            p => K#'RSAPrivateKey'.prime1,
+            q => K#'RSAPrivateKey'.prime2,
+            dp => K#'RSAPrivateKey'.exponent1,
+            dq => K#'RSAPrivateKey'.exponent2,
+            qi => K#'RSAPrivateKey'.coefficient},
+  Data1 =
+    case K#'RSAPrivateKey'.otherPrimeInfos of
+      asn1_NOVALUE ->
+        Data0;
+      OPI ->
+        F = fun
+              (#'OtherPrimeInfo'{prime = P, exponent = E, coefficient = C}) ->
+                #{r => P, d => E, t => C}
+            end,
+        Data0#{oth => lists:map(F, OPI)}
+    end,
+  maps:filter(fun (_, V) -> V =/= undefined end, Data1);
 from_record({#'ECPoint'{} = K, {namedCurve, Curve}}) ->
   {X, Y} = jose_crypto:ec_point_to_coordinate(K#'ECPoint'.point),
   #{kty => 'EC',
