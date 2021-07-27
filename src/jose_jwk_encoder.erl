@@ -219,14 +219,18 @@ encode_ec(d, JWK, _, State) ->
 encode_rsa(JWK, Options, State) ->
   encode_rsa(n, JWK, Options, State).
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.1
 encode_rsa(n, JWK, Options, State) ->
   Value = b64url:encode(integer_bytes(maps:get(n, JWK)), [nopad]),
   encode_rsa(e, JWK, Options, State#{<<"n">> => Value});
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.1.2
 encode_rsa(e, JWK, Options, State) ->
   Value = b64url:encode(integer_bytes(maps:get(e, JWK)), [nopad]),
   encode_rsa(d, JWK, Options, State#{<<"e">> => Value});
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.1
 encode_rsa(d, JWK, Options, State) ->
   case maps:find(d, JWK) of
     error ->
@@ -236,6 +240,7 @@ encode_rsa(d, JWK, Options, State) ->
       encode_rsa(p, JWK, Options, State#{<<"d">> => Value})
   end;
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.2
 encode_rsa(p, JWK, Options, State) ->
   case maps:find(p, JWK) of
     error ->
@@ -245,26 +250,31 @@ encode_rsa(p, JWK, Options, State) ->
       encode_rsa(q, JWK, Options, State#{<<"p">> => Value})
   end;
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.3
 encode_rsa(q, JWK, Options, State) ->
   Q = maps:get(q, JWK),
   Value = b64url:encode(integer_bytes(Q), [nopad]),
   encode_rsa(dp, JWK, Options, State#{<<"q">> => Value});
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.4
 encode_rsa(dp, JWK, Options, State) ->
   DP = maps:get(dp, JWK),
   Value = b64url:encode(integer_bytes(DP), [nopad]),
   encode_rsa(dq, JWK, Options, State#{<<"dp">> => Value});
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.5
 encode_rsa(dq, JWK, Options, State) ->
   DQ = maps:get(dq, JWK),
   Value = b64url:encode(integer_bytes(DQ), [nopad]),
   encode_rsa(qi, JWK, Options, State#{<<"dq">> => Value});
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.6
 encode_rsa(qi, JWK, Options, State) ->
   QI = maps:get(qi, JWK),
   Value = b64url:encode(integer_bytes(QI), [nopad]),
   encode_rsa(oth, JWK, Options, State#{<<"qi">> => Value});
 
+%% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.7
 encode_rsa(oth, _, _, State) ->
   State.
 
