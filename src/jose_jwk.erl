@@ -136,10 +136,15 @@
       | 'P-521'.
 
 -type coordinate() :: binary().
+
 -type ecc_private_key() :: binary().
+
 -type modulus() :: non_neg_integer().
+
 -type exponent() :: non_neg_integer().
+
 -type prime_factor() :: non_neg_integer().
+
 -type oth() :: #{r := prime_factor(),
                  d := exponent(),
                  t := non_neg_integer()}.
