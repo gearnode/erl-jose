@@ -216,5 +216,66 @@ encode_ec(d, JWK, _, State) ->
   end.
 
 -spec encode_rsa(jose_jwk:jwk(), options(), state()) -> state().
-encode_rsa(_, _, State) ->
+encode_rsa(JWK, Options, State) ->
+  encode_rsa(n, JWK, Options, State).
+
+encode_rsa(n, JWK, Options, State) ->
+  Value = b64url:encode(integer_bytes(maps:get(n, JWK)), [nopad]),
+  encode_rsa(e, JWK, Options, State#{<<"n">> => Value});
+
+encode_rsa(e, JWK, Options, State) ->
+  Value = b64url:encode(integer_bytes(maps:get(e, JWK)), [nopad]),
+  encode_rsa(d, JWK, Options, State#{<<"e">> => Value});
+
+encode_rsa(d, JWK, Options, State) ->
+  case maps:find(d, JWK) of
+    error ->
+      State;
+    {ok, D} when is_integer(D) ->
+      Value = b64url:encode(integer_bytes(D), [nopad]),
+      encode_rsa(p, JWK, Options, State#{<<"d">> => Value})
+  end;
+
+encode_rsa(p, JWK, Options, State) ->
+  case maps:find(p, JWK) of
+    error ->
+      State;
+    {ok, P} when is_integer(P) ->
+      Value = b64url:encode(integer_bytes(P), [nopad]),
+      encode_rsa(q, JWK, Options, State#{<<"p">> => Value})
+  end;
+
+encode_rsa(q, JWK, Options, State) ->
+  Q = maps:get(q, JWK),
+  Value = b64url:encode(integer_bytes(Q), [nopad]),
+  encode_rsa(dp, JWK, Options, State#{<<"q">> => Value});
+
+encode_rsa(dp, JWK, Options, State) ->
+  DP = maps:get(dp, JWK),
+  Value = b64url:encode(integer_bytes(DP), [nopad]),
+  encode_rsa(dq, JWK, Options, State#{<<"dp">> => Value});
+
+encode_rsa(dq, JWK, Options, State) ->
+  DQ = maps:get(dq, JWK),
+  Value = b64url:encode(integer_bytes(DQ), [nopad]),
+  encode_rsa(qi, JWK, Options, State#{<<"dq">> => Value});
+
+encode_rsa(qi, JWK, Options, State) ->
+  QI = maps:get(qi, JWK),
+  Value = b64url:encode(integer_bytes(QI), [nopad]),
+  encode_rsa(oth, JWK, Options, State#{<<"qi">> => Value});
+
+encode_rsa(oth, _, _, State) ->
   State.
+
+-spec integer_bytes(non_neg_integer()) -> binary().
+integer_bytes(N) ->
+  list_to_binary(integer_bytes(N, [])).
+
+-spec integer_bytes(non_neg_integer(), [byte()]) -> [byte()].
+integer_bytes(0, []) ->
+  [0];
+integer_bytes(0, Bytes) ->
+  Bytes;
+integer_bytes(N, Bytes) ->
+  integer_bytes(N bsr 8, [N band 16#ff | Bytes]).
