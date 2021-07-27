@@ -39,7 +39,7 @@ encode(JWK, Options) ->
   Data = encode(kty, JWK, Options, #{}),
   case maps:get(returns, Options, binary) of
     binary ->
-      json:serialize(Data);
+      json:serialize(Data, #{return_binary => true});
     map ->
       Data
   end.
