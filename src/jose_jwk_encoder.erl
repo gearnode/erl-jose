@@ -275,8 +275,19 @@ encode_rsa(qi, JWK, Options, State) ->
   encode_rsa(oth, JWK, Options, State#{<<"qi">> => Value});
 
 %% https://datatracker.ietf.org/doc/html/rfc7518#section-6.3.2.7
-encode_rsa(oth, _, _, State) ->
-  State.
+encode_rsa(oth, JWK, _, State) ->
+  F = fun
+        (#{r := R, d := D, t := T}) ->
+          #{<<"r">> => b64url:encode(integer_bytes(R), [nopad]),
+            <<"d">> => b64url:encode(integer_bytes(D), [nopad]),
+            <<"t">> => b64url:encode(integer_bytes(T), [nopad])}
+      end,
+  case maps:find(oth, JWK) of
+    error ->
+      State;
+    {ok, Oth} when is_list(Oth) ->
+      State#{<<"oth">> => lists:map(F, Oth)}
+  end.
 
 -spec integer_bytes(non_neg_integer()) -> binary().
 integer_bytes(N) ->
