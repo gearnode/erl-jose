@@ -199,13 +199,13 @@ from_record(#'RSAPrivateKey'{} = K) ->
 from_record({#'ECPoint'{} = K, {namedCurve, Curve}}) ->
   {X, Y} = jose_crypto:ec_point_to_coordinate(K#'ECPoint'.point),
   #{kty => 'EC',
-    crv => pubkey_cert_records:namedCurves(Curve),
+    crv => ec_crv(pubkey_cert_records:namedCurves(Curve)),
     x => X,
     y => Y};
 from_record(#'ECPrivateKey'{parameters = {namedCurve, Curve}} = K) ->
   {X, Y} = jose_crypto:ec_point_to_coordinate(K#'ECPrivateKey'.publicKey),
   #{kty => 'EC',
-    crv => pubkey_cert_records:namedCurves(Curve),
+    crv => ec_crv(pubkey_cert_records:namedCurves(Curve)),
     d => K#'ECPrivateKey'.privateKey,
     x => X,
     y => Y};
@@ -240,3 +240,11 @@ encode(JWK) ->
 encode(JWK, Options) ->
   jose_jwk_encoder:encode(JWK, Options).
 
+-spec ec_crv(secp256r1 | secp384r1 | secp521r1) ->
+        'P-256' | 'P-384' | 'P-521'.
+ec_crv(secp256r1) ->
+  'P-256';
+ec_crv(secp384r1) ->
+  'P-384';
+ec_crv(secp521r1) ->
+  'P-521'.
