@@ -540,7 +540,7 @@ decode_rsa_oth(r, Data, State) ->
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, R} ->
-          State1 = State#{r => R},
+          State1 = State#{r => bytes_integer(R)},
           decode_rsa_oth(d, Data, State1);
         {error, Reason} ->
           throw({error,
@@ -565,7 +565,7 @@ decode_rsa_oth(d, Data, State) ->
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, D} ->
-          State1 = State#{d => D},
+          State1 = State#{d => bytes_integer(D)},
           decode_rsa_oth(t, Data, State1);
         {error, Reason} ->
           throw({error,
@@ -590,7 +590,7 @@ decode_rsa_oth(t, Data, State) ->
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, T} ->
-          State#{t => T};
+          State#{t => bytes_integer(T)};
         {error, Reason} ->
           throw({error,
                  {invalid_parameter,
