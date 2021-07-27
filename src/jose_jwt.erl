@@ -35,7 +35,7 @@
 
 -type header() :: #{alg => jose_jwa:alg(),
                     jku => uri:uri(),
-                    jwk => jose_jwk:jwk(),
+                    jwk => jose:jwk(),
                     kid => jose:kid(),
                     x5u => uri:uri(),
                     x5c => [jose:certificate()],

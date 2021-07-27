@@ -34,7 +34,7 @@
 
 -type state() :: #{}.
 
--spec encode(jose_jwk:jwk(), options()) -> binary() | map().
+-spec encode(jose:jwk(), options()) -> binary() | map().
 encode(JWK, Options) ->
   Data = encode(kty, JWK, Options, #{}),
   case maps:get(returns, Options, binary) of
@@ -44,7 +44,7 @@ encode(JWK, Options) ->
       Data
   end.
 
--spec encode(step(), jose_jwk:jwk(), options(), state()) -> map().
+-spec encode(step(), jose:jwk(), options(), state()) -> map().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
 encode(kty, JWK, Options, State) ->
   State1 =
@@ -172,13 +172,13 @@ encode(key_data, JWK, Options, State) ->
       encode_ec(JWK, Options, State)
   end.
 
--spec encode_oct(jose_jwk:jwk(), options(), state()) -> state().
+-spec encode_oct(jose:jwk(), options(), state()) -> state().
 %% https://datatracker.ietf.org/doc/html/rfc7518#section-6.4.1
 encode_oct(JWK, _, State) ->
   Value = b64url:decode(maps:get(k, JWK), [nopad]),
   State#{<<"k">> => Value}.
 
--spec encode_ec(jose_jwk:jwk(), options(), state()) -> state().
+-spec encode_ec(jose:jwk(), options(), state()) -> state().
 encode_ec(JWK, Options, State) ->
   encode_ec(crv, JWK, Options, State).
 
@@ -215,7 +215,7 @@ encode_ec(d, JWK, _, State) ->
       State#{<<"d">> => Value}
   end.
 
--spec encode_rsa(jose_jwk:jwk(), options(), state()) -> state().
+-spec encode_rsa(jose:jwk(), options(), state()) -> state().
 encode_rsa(JWK, Options, State) ->
   encode_rsa(n, JWK, Options, State).
 

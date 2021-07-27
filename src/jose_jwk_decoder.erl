@@ -41,7 +41,7 @@
 -type state() :: #{jwk => map(), cert => jose:certificate()}.
 
 -spec decode(binary() | map(), options()) ->
-        {ok, jose_jwk:jwk()} | {error, term()}.
+        {ok, jose:jwk()} | {error, term()}.
 decode(Bin, Options) when is_binary(Bin) ->
   case json:parse(Bin, #{duplicate_key_handling => error}) of
     {ok, Data} when is_map(Data) ->
@@ -59,7 +59,7 @@ decode(Data, Options) when is_map(Data) ->
       {error, Reason}
   end.
 
--spec decode(step(), map(), options(), state()) -> jose_jwk:jwk().
+-spec decode(step(), map(), options(), state()) -> jose:jwk().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
 decode(kty, Data, Options, State) ->
   Kty =

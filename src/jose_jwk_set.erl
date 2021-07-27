@@ -18,7 +18,7 @@
 
 -export_type([set/0]).
 
--type set() :: #{keys := [jose_jwk:jwk()]}.
+-type set() :: #{keys := [jose:jwk()]}.
 
 -spec from_file(file:filename_all()) -> {ok, set()} | {error, term()}.
 from_file(Filename) ->
