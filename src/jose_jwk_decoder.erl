@@ -173,7 +173,7 @@ decode(x5u, Data, Options, #{jwk := JWK} = State) ->
             Certificate = lists:last(Chain),
             State#{jwk => JWK#{x5u => Value}, cert => Certificate};
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, x5c}})
+            throw({error, {invalid_parameter, Reason, x5u}})
         end
     end,
   decode(x5c, Data, Options, State1);
