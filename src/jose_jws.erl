@@ -26,7 +26,7 @@
               encode_options/0,
               decode_error_reason/0]).
 
--type header() :: #{alg => jose_jwa:alg(),
+-type header() :: #{alg => jose:alg(),
                     jku => uri:uri(),
                     jwk => jose:jwk(),
                     kid => jose:kid(),
@@ -34,13 +34,11 @@
                     x5c => [jose:certificate()],
                     x5t => jose:certificate_thumbprint(),
                     'x5t#S256' => jose:certificate_thumbprint(),
-                    typ => jose_media_type:media_type(),
-                    cty => jose_media_type:media_type(),
+                    typ => jose:media_type(),
+                    cty => jose:media_type(),
                     b64 => boolean(),
                     crit => [jose:header_parameter_name()]}.
 
--type typ() :: binary().
--type cty() :: binary().
 -type payload() :: binary().
 -type compact() :: binary().
 -type jws() :: {header(), payload()}.
