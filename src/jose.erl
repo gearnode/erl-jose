@@ -20,7 +20,7 @@
               kid/0,
               certificate_thumbprint/0, certificate/0, certificate_chain/0,
               public_key/0, private_key/0,
-              jwk/0]).
+              jwk/0, jws/0, jwt/0, alg/0, media_type/0]).
 
 -type header_parameter_name() :: binary().
 
@@ -39,3 +39,11 @@
                      | #'ECPrivateKey'{}.
 
 -type jwk() :: jose_jwk:jwk().
+
+-type jws() :: jose_jws:jws().
+
+-type jwt() :: jose_jwt:jwt().
+
+-type alg() :: jose_jwa:alg().
+
+-type media_type() :: jose_media_type:media_type().
