@@ -21,6 +21,7 @@
 -export_type([header/0,
               payload/0,
               compact/0,
+              jws/0,
               encode_options/0,
               decode_error_reason/0]).
 
@@ -39,6 +40,7 @@
 
 -type payload() :: binary().
 -type compact() :: binary().
+
 -type jws() :: {header(), payload()}.
 
 -type encode_options() :: map().
