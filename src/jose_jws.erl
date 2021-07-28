@@ -19,8 +19,6 @@
          decode_compact/3, decode_compact/4]).
 
 -export_type([header/0,
-              typ/0,
-              cty/0,
               payload/0,
               compact/0,
               encode_options/0,
