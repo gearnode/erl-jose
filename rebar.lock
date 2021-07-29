@@ -1,6 +1,6 @@
 [{<<"b64">>,
   {git,"https://github.com/exograd/erl-b64.git",
-       {ref,"cb27693049d0d838fdde900aba4de929bbb9021a"}},
+       {ref,"0ad7b258cd86d11dfa98c22992b1267516d3d77c"}},
   0},
  {<<"et">>,
   {git,"https://github.com/galdor/erl-et.git",
