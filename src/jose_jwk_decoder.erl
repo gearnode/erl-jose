@@ -16,7 +16,26 @@
 
 -export([decode/2]).
 
--export_type([options/0]).
+-export_type([options/0,
+              error/0, error_reason/0]).
+
+-type error() :: #{key => atom(),
+                   reason := error_reason()}.
+
+-type error_reason() ::
+        missing
+      | empty
+      | {unsupported, Value :: term()}
+      | {invalid_format, Value :: term()}
+      | jose_jwa:decode_alg_error_reason()
+      | untrusted_certificate
+      | certificate_missmatch 
+      | jose_x5u:decode_error_reason()
+      | jose_x5c:decode_error_reason()
+      | jose_x5t:decode_error_reason()
+      | jose_x5tS256:decode_error_reason()
+      | b64url:decode_error_reason()
+      | #{key => oth, reason => error_reason()}.
 
 -type options() ::
         #{trusted_remotes =>
@@ -41,15 +60,15 @@
 -type state() :: #{jwk => map(), cert => jose:certificate()}.
 
 -spec decode(binary() | map(), options()) ->
-        {ok, jose:jwk()} | {error, term()}.
+        {ok, jose:jwk()} | {error, error()}.
 decode(Bin, Options) when is_binary(Bin) ->
   case json:parse(Bin, #{duplicate_key_handling => error}) of
     {ok, Data} when is_map(Data) ->
       decode(Data, Options);
     {ok, _} ->
-      {error, invalid_format};
+      {error, #{reason => invalid_format}};
     {error, Reason} ->
-      {error, {invalid_format, Reason}}
+      {error, #{reason => Reason}}
   end;
 decode(Data, Options) when is_map(Data) ->
   try
@@ -59,7 +78,7 @@ decode(Data, Options) when is_map(Data) ->
       {error, Reason}
   end;
 decode(_, _) ->
-  {error, invalid_format}.
+  {error, #{reason => invalid_format}}.
 
 -spec decode(step(), map(), options(), state()) -> jose:jwk().
 %% https://tools.ietf.org/html/rfc7517#section-4.1
@@ -67,7 +86,7 @@ decode(kty, Data, Options, State) ->
   Kty =
     case maps:find(<<"kty">>, Data) of
       error ->
-        throw({error, {missing_parameter, kty}});
+        throw({error, #{key => kty, reason => missing}});
       {ok, <<"oct">>} ->
         oct;
       {ok, <<"RSA">>} ->
@@ -75,7 +94,7 @@ decode(kty, Data, Options, State) ->
       {ok, <<"EC">>} ->
         'EC';
       {ok, Value} ->
-        throw({error, {invalid_parameter, {unsupported, Value}, kty}})
+        throw({error, #{key => kty, reason => {unsupported, Value}}})
     end,
   decode(use, Data, Options, State#{jwk => #{kty => Kty}});
 
@@ -90,9 +109,9 @@ decode(use, Data, Options, #{jwk := JWK} = State) ->
       {ok, <<"enc">>} ->
         JWK#{use => enc};
       {ok, Value} when is_binary(Value) ->
-        throw({error, {invalid_parameter, {unsupported, Value}, use}});
+        throw({error, #{key => use, reason => {unsupported, Value}}});
       {ok, Value} ->
-        throw({error, {invalid_parameter, {invalid_syntax, Value}, use}})
+        throw({error, #{key => use, reason => {invalid_format, Value}}})
     end,
   decode(key_ops, Data, Options, State#{jwk => JWK1});
 
@@ -108,9 +127,9 @@ decode(key_ops, Data, Options, #{jwk := JWK} = State) ->
         (<<"deriveKey">>) -> deriveKey;
         (<<"deriveBits">>) -> deriveBits;
         (Value) when is_binary(Value) ->
-          throw({error, {invalid_parameter, {unsupported, Value}, key_ops}});
+          throw({error, #{key => key_ops, reason => {unsupported, Value}}});
         (Value) ->
-          throw({error, {invalid_parameter, {invalid_syntax, Value}, key_ops}})
+          throw({error, #{key => key_ops, reason => {invalid_format, Value}}})
       end,
   JWK1 =
     case maps:find(<<"key_ops">>, Data) of
@@ -120,7 +139,7 @@ decode(key_ops, Data, Options, #{jwk := JWK} = State) ->
         Operations = lists:map(F, Value),
         JWK#{key_ops => Operations};
       {ok, Value} ->
-        throw({error, {invalid_parameter, {unsupported, Value}, key_ops}})
+        throw({errot, #{key => key_ops, reason => {invalid_format, Value}}})
     end,
   decode(alg, Data, Options, State#{jwk => JWK1});
 
@@ -135,10 +154,10 @@ decode(alg, Data, Options, #{jwk := JWK} = State) ->
           {ok, Alg} ->
             JWK#{alg => Alg};
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, alg}})
+            throw({error, #{key => alg, reason => Reason}})
         end;
       {ok, Value} ->
-        throw({error, {invalid_parameter, {invalid_syntax, Value}, alg}})
+        throw({error, #{key => alg, reason => {invalid_format, Value}}})
     end,
   decode(kid, Data, Options, State#{jwk => JWK1});
 
@@ -151,7 +170,7 @@ decode(kid, Data, Options, #{jwk := JWK} = State) ->
       {ok, Kid} when is_binary(Kid) ->
         JWK#{kid => Kid};
       {ok, Value} ->
-        throw({error, {invalid_parameter, {invalid_syntax, Value}, kid}})
+        throw({error, #{key => kid, reason => {invalid_format, Value}}})
     end,
   decode(x5u, Data, Options, State#{jwk => JWK1});
 
@@ -168,12 +187,11 @@ decode(x5u, Data, Options, #{jwk := JWK} = State) ->
             State;
           {ok, Chain} ->
             is_certificate_chain_trustable(Chain, Options) orelse
-              throw({error, {invalid_parameter,
-                             {bad_cert, untrusted_cert}, x5u}}),
+              throw({error, #{key => x5u, reason => untrusted_certificate}}),
             Certificate = lists:last(Chain),
             State#{jwk => JWK#{x5u => Value}, cert => Certificate};
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, x5u}})
+            throw({error, #{key => x5u, reason => Reason}})
         end
     end,
   decode(x5c, Data, Options, State1);
@@ -190,19 +208,18 @@ decode(x5c, Data, Options, #{jwk := JWK} = State) ->
             State;
           {ok, Chain} ->
             is_certificate_chain_trustable(Chain, Options) orelse
-              throw({error, {invalid_parameter,
-                             {bad_cert, untrusted_cert}, x5c}}),
+              throw({error, #{key => x5c, reason => untrusted_certificate}}),
             Certificate = lists:last(Chain),
             case maps:find(cert, State) of
               {ok, Certificate} ->
                 State#{jwk => JWK#{x5c => Chain}};
               {ok, _} ->
-                throw({error, {invalid_parameter, thumbprint_not_match, x5c}});
+                throw({error, #{key => x5c, reason => certificate_missmatch}});
               error ->
                 State#{jwk => JWK#{x5c => Chain}, cert => Certificate}
             end;
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, x5c}})
+            throw({error, #{key => x5c, reason => Reason}})
         end
     end,
   decode(x5t, Data, Options, State1);
@@ -219,14 +236,14 @@ decode(x5t, Data, Options, #{jwk := JWK} = State) ->
             case maps:find(cert, State) of
               {ok, Certificate} ->
                 jose_pkix:cert_thumbprint(Certificate) =:= Thumbprint orelse
-                  throw({error,
-                         {invalid_parameter, thumbprint_not_match, x5t}}),
+                  throw({error, #{key => x5t,
+                                  reason => certificate_missmatch}}),
                 State#{jwk => JWK#{x5t => Thumbprint}};
               error ->
                 State#{jwk => JWK#{x5t => Thumbprint}}
             end;
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, x5t}})
+            throw({error, #{key => x5t, reason => Reason}})
         end
     end,
   decode('x5t#S256', Data, Options, State1);
@@ -243,14 +260,14 @@ decode('x5t#S256', Data, Options, #{jwk := JWK} = State) ->
             case maps:find(cert, State) of
               {ok, Certificate} ->
                 jose_pkix:cert_thumbprint256(Certificate) =:= Thumbprint orelse
-                  throw({error,
-                         {invalid_parameter, thumbprint_not_match, 'x5t#S256'}}),
+                  throw({error, #{key => 'x5t#S256',
+                                  reason => certificate_missmatch}}),
                 State#{jwk => JWK#{'x5t#S256' => Thumbprint}};
               error ->
                 State#{jwk => JWK#{'x5t#S256' => Thumbprint}}
             end;
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, 'x5t#S256'}})
+            throw({error, #{key => 'x5t#S256', reason => Reason}})
         end
     end,
   decode(key_data, Data, Options, State1);
@@ -268,7 +285,7 @@ decode(key_data, Data, Options, #{jwk := JWK} = State) ->
   decode(validate, Data, Options, State#{jwk => JWK1});
 
 decode(validate, _, _, #{jwk := #{kty := oct}, cert := _}) ->
-  throw({error, {invalid_jwk, oct_cannot_have_certificate_chain}});
+  throw({error, #{reason => certificate_missmatch}});
 decode(validate, _, _, #{jwk := JWK, cert := Cert}) ->
   KeyPub = jose_pkix:privkey_to_pubkey(jose_jwk:to_record(JWK)),
   CertPub = jose_pkix:get_cert_pubkey(Cert),
@@ -276,8 +293,7 @@ decode(validate, _, _, #{jwk := JWK, cert := Cert}) ->
     true ->
       JWK;
     false ->
-      throw({error,
-             {invalid_jwk, public_key_not_match_cert_certificate_chain}})
+      throw({error, #{reason => certificate_missmatch}})
   end;
 decode(validate, _, _, #{jwk := JWK}) ->
   JWK.
@@ -292,7 +308,7 @@ decode_ec(crv, Data, State) ->
   State1 =
     case maps:find(<<"crv">>, Data) of
       error ->
-        throw({error, {missing_parameter, crv}});
+        throw({error, #{key => crv, reason => missing}});
       {ok, <<"P-256">>} ->
         State#{crv => 'P-256'};
       {ok, <<"P-384">>} ->
@@ -300,9 +316,9 @@ decode_ec(crv, Data, State) ->
       {ok, <<"P-521">>} ->
         State#{crv => 'P-521'};
       {ok, Value} when is_binary(Value) ->
-        throw({error, {invalid_parameter, {unsupported, Value}, crv}});
+        throw({error, #{key => crv, reason => {unsupported, Value}}});
       {ok, Value} ->
-        throw({error, {invalid_parameter, {invalid_syntax, Value}, crv}})
+        throw({error, #{key => crv, reason => {invalid_format, Value}}})
     end,
   decode_ec(x, Data, State1);
 
@@ -311,20 +327,20 @@ decode_ec(x, Data, #{crv := Crv} = State) ->
   State1 =
     case maps:find(<<"x">>, Data) of
       error ->
-        throw({error, {missing_parameter, x}});
+        throw({error, #{key => x, reason => missing}});
       {ok, Value} when is_binary(Value) ->
         case b64url:decode(Value, [nopad]) of
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, x}});
+            throw({error, #{key => x, reason => Reason}});
           {ok, X} when Crv =:= 'P-256', byte_size(X) =:= 32;
                        Crv =:= 'P-384', byte_size(X) =:= 48;
                        Crv =:= 'P-521', byte_size(X) =:= 66 ->
             State#{x => X};
           {ok, DV} ->
-            throw({error, {invalid_parameter, {invalid_syntax, DV}, x}})
+            throw({error, #{key => x, reason => {unsupported, DV}}})
         end;
       {ok, Value} ->
-        throw({error, {invalid_parameter, {invalid_syntax, Value}, x}})
+        throw({error, #{key => x, reason => {invalid_format, Value}}})
     end,
   decode_ec(y, Data, State1);
 
@@ -334,20 +350,20 @@ decode_ec(y, Data, #{crv := Crv} = State) ->
     case maps:find(<<"y">>, Data) of
       %% XXX: not all Elliptic Curve required the "y" paramater.
       error ->
-        throw({error, {missing_parameter, y}});
+        throw({error, #{key => y, reason => missing}});
       {ok, Value} when is_binary(Value) ->
         case b64url:decode(Value, [nopad]) of
           {error, Reason} ->
-            throw({error, {invalid_parameter, Reason, y}});
+            throw({error, #{key => y, reason => Reason}});
           {ok, Y} when Crv =:= 'P-256', byte_size(Y) =:= 32;
                        Crv =:= 'P-384', byte_size(Y) =:= 48;
                        Crv =:= 'P-521', byte_size(Y) =:= 66 ->
             State#{y => Y};
           {ok, DV} ->
-            throw({error, {invalid_parameter, {invalid_syntax, DV}, y}})
+            throw({error, #{key => y, reason => {unsupported, DV}}})
         end;
       {ok, Value} ->
-        throw({error, {invalid_parameter, {invalid_syntax, Value}, y}})
+        throw({error, #{key => y, reason => {invalid_format, Value}}})
     end,
   decode_ec(d, Data, State1);
 
@@ -360,16 +376,15 @@ decode_ec(d, Data, State) ->
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {error, Reason} ->
-          throw({error,
-                 {invalid_parameter, Reason, d}});
+          throw({error, #{key => d, reason => Reason}});
         {ok, D} when is_binary(Value) ->
           %% TODO: check the size of the octect string.
           State#{d => D};
         {ok, DV} ->
-          throw({error, {invalid_parameter, {invalid_syntax, DV}, y}})
+          throw({error, #{key => d, reason => {invalid_format, DV}}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, y}})
+      throw({error, #{key => d, reason => {invalid_format, Value}}})
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3
@@ -381,34 +396,34 @@ decode_rsa(Data, State) ->
 decode_rsa(n, Data, State) ->
   case maps:find(<<"n">>, Data) of
     error ->
-      throw({error, {missing_parameter, n}});
+      throw({error, #{key => n, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, N} ->
           State1 = State#{n => bytes_integer(N)},
           decode_rsa(e, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, n}})
+          throw({error, #{key => n, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, n}})
+      throw({error, #{key => n, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.1.2
 decode_rsa(e, Data, State) ->
   case maps:find(<<"e">>, Data) of
     error ->
-      throw({error, {missing_parameter, e}});
+      throw({error, #{key => e, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, E} ->
           State1 = State#{e => bytes_integer(E)},
           decode_rsa(d, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, e}})
+          throw({error, #{key => e, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, e}})
+      throw({error, #{key => e, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2
@@ -423,10 +438,10 @@ decode_rsa(d, Data, State) ->
           State1 = State#{d => bytes_integer(D)},
           decode_rsa(p, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, d}})
+          throw({error, #{key => d, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, d}})
+      throw({error, #{key => d, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.2
@@ -440,78 +455,78 @@ decode_rsa(p, Data, State) ->
           State1 = State#{p => bytes_integer(P)},
           decode_rsa(q, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, p}})
+          throw({error, #{key => p, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, p}})
+      throw({error, #{key => p, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.3
 decode_rsa(q, Data, State) ->
   case maps:find(<<"q">>, Data) of
     error ->
-      throw({error, {missing_parameter, q}});
+      throw({error, #{key => q, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, Q} ->
           State1 = State#{q => bytes_integer(Q)},
           decode_rsa(dp, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, q}})
+          throw({error, #{key => q, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, q}})
+      throw({error, #{key => q, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.4
 decode_rsa(dp, Data, State) ->
   case maps:find(<<"dp">>, Data) of
     error ->
-      throw({error, {missing_parameter, dp}});
+      throw({error, #{key => dp, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, DP} ->
           State1 = State#{dp => bytes_integer(DP)},
           decode_rsa(dq, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, dp}})
+          throw({error, #{key => dp, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, dp}})
+      throw({error, #{key => dp, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.5
 decode_rsa(dq, Data, State) ->
   case maps:find(<<"dq">>, Data) of
     error ->
-      throw({error, {missing_parameter, dp}});
+      throw({error, #{key => dq, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, DQ} ->
           State1 = State#{dq => bytes_integer(DQ)},
           decode_rsa(qi, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, dq}})
+          throw({error, #{key => dq, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, dq}})
+      throw({error, #{key => dq, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.6
 decode_rsa(qi, Data, State) ->
   case maps:find(<<"qi">>, Data) of
     error ->
-      throw({error, {missing_parameter, dp}});
+      throw({error, #{key => qi, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, QI} ->
           State1 = State#{qi => bytes_integer(QI)},
           decode_rsa(oth, Data, State1);
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, qi}})
+          throw({error, #{key => qi, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, qi}})
+      throw({error, #{key => qi, reason => {invalid_format, Value}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.7
@@ -520,12 +535,12 @@ decode_rsa(oth, Data, State) ->
     error ->
       State;
     {ok, []} ->
-      throw({error, {invalid_parameter, {invalid_syntax, []}, oth}});
+      throw({error, #{key => oth, reason => empty}});
     {ok, Value} when is_list(Value) ->
       F = fun (X) -> decode_rsa_oth(X, #{}) end,
       State#{oth => lists:map(F, Value)};
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, oth}})
+      throw({error, #{key => oth, reason => {invalid_format, Value}}})
   end.
 
 % https://tools.ietf.org/html/rfc7518#section-6.3.2.7.1
@@ -535,74 +550,56 @@ decode_rsa_oth(Data, State) ->
 decode_rsa_oth(r, Data, State) ->
   case maps:find(<<"r">>, Data) of
     error ->
-      throw({error,
-             {invalid_parameter,
-              {invalid_member,
-               missing_member, r}, oth}});
+      throw({error, #{key => oth, reason => #{key => r, reason => missing}}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, R} ->
           State1 = State#{r => bytes_integer(R)},
           decode_rsa_oth(d, Data, State1);
         {error, Reason} ->
-          throw({error,
-                 {invalid_parameter,
-                  {invalid_member, Reason, r}, oth}})
+          throw({error, #{key => oth, reason =>
+                            #{key => r, reason => Reason}}})
       end;
     {ok, Value} ->
-      throw({error,
-             {invalid_parameter,
-              {invalid_member,
-               {invalid_syntax, Value}, r}, oth}})
+      throw({error, #{key => oth, reason =>
+                        #{key => r, reason => {invalid_format, Value}}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.7.2
 decode_rsa_oth(d, Data, State) ->
   case maps:find(<<"d">>, Data) of
     error ->
-      throw({error,
-             {invalid_parameter,
-              {invalid_member,
-               missing_member, d}, oth}});
+      throw({error, #{key => oth, reason => #{key => d, reason => missing}}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, D} ->
           State1 = State#{d => bytes_integer(D)},
           decode_rsa_oth(t, Data, State1);
         {error, Reason} ->
-          throw({error,
-                 {invalid_parameter,
-                  {invalid_member, Reason, d}, oth}})
+          throw({error, #{key => oth, reason =>
+                            #{key => d, reason => Reason}}})
       end;
     {ok, Value} ->
-      throw({error,
-             {invalid_parameter,
-              {invalid_member,
-               {invalid_syntax, Value}, d}, oth}})
+      throw({error, #{key => oth, reason =>
+                        #{key => d, reason => {invalid_format, Value}}}})
   end;
 
 %% https://tools.ietf.org/html/rfc7518#section-6.3.2.7.3
 decode_rsa_oth(t, Data, State) ->
   case maps:find(<<"t">>, Data) of
     error ->
-      throw({error,
-             {invalid_parameter,
-              {invalid_member,
-               missing_member, t}, oth}});
+      throw({error, #{key => oth, reason => #{key => t, reason => missing}}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, T} ->
           State#{t => bytes_integer(T)};
         {error, Reason} ->
-          throw({error,
-                 {invalid_parameter,
-                  {invalid_member, Reason, t}, oth}})
+          throw({error, #{key => oth, reason =>
+                            #{key => t, reason => Reason}}})
       end;
     {ok, Value} ->
-      throw({error,
-             {invalid_parameter,
-              {invalid_member,
-               {invalid_syntax, Value}, t}, oth}})
+      throw({error, #{key => oth, reason =>
+                        #{key => t, reason => {invalid_format, Value}}}})
   end.
 
 %% https://tools.ietf.org/html/rfc7518#section-6.4
@@ -614,16 +611,16 @@ decode_oct(Data, State) ->
 decode_oct(k, Data, State) ->
   case maps:find(<<"k">>, Data) of
     error ->
-      throw({error, {missing_parameter, k}});
+      throw({error, #{key => k, reason => missing}});
     {ok, Value} when is_binary(Value) ->
       case b64url:decode(Value, [nopad]) of
         {ok, K} ->
           State#{k => K};
         {error, Reason} ->
-          throw({error, {invalid_parameter, Reason, k}})
+          throw({error, #{key => k, reason => Reason}})
       end;
     {ok, Value} ->
-      throw({error, {invalid_parameter, {invalid_syntax, Value}, k}})
+      throw({error, #{key => k, reason => {invalid_format, Value}}})
   end.
 
 -spec bytes_integer(binary()) ->

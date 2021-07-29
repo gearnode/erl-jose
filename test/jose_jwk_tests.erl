@@ -17,37 +17,35 @@
 -include_lib("eunit/include/eunit.hrl").
 
 decode_empty_json_object_test() ->
-  ?assertEqual({error,{missing_parameter,kty}},
+  ?assertEqual({error, #{key => kty, reason => missing}},
                jose_jwk:decode(<<"{}">>)).
 
 decode_json_array_test() ->
-  ?assertEqual({error, invalid_format},
+  ?assertEqual({error, #{reason => invalid_format}},
                jose_jwk:decode(<<"[]">>)).
 
 decode_empty_map_test() -> 
-  ?assertEqual({error,{missing_parameter,kty}},
+  ?assertEqual({error, #{key => kty, reason => missing}},
                jose_jwk:decode(#{})).
 
 decode_term_test() ->
-  ?assertEqual({error, invalid_format},
+  ?assertEqual({error, #{reason => invalid_format}},
                jose_jwk:decode([])),
-  ?assertEqual({error, invalid_format},
+  ?assertEqual({error, #{reason => invalid_format}},
                jose_jwk:decode(foo)),
-  ?assertEqual({error, invalid_format},
+  ?assertEqual({error, #{reason => invalid_format}},
                jose_jwk:decode("hello")),
-  ?assertEqual({error, invalid_format},
+  ?assertEqual({error, #{reason => invalid_format}},
                jose_jwk:decode(1)).
   
 decode_emtpy_bin_test() ->
   ?assertEqual({error,
-                {invalid_format,
-                 #{position => {1,1}, reason => no_value}}},
+                 #{reason => #{position => {1,1}, reason => no_value}}},
                jose_jwk:decode(<<>>)).
 
 decode_jwk_with_not_supported_kty_test() ->
   ?assertEqual({error,
-                {invalid_parameter,
-                 {unsupported,<<"foobar">>}, kty}},
+                #{key => kty, reason => {unsupported, <<"foobar">>}}},
                jose_jwk:decode(#{<<"kty">> => <<"foobar">>})).
 
 decode_rfc7520_3_1_test() ->
