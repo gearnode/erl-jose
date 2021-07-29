@@ -31,7 +31,8 @@
               rsa/0,
               hmac_key/0,
               sign_key/0,
-              verify_key/0]).
+              verify_key/0,
+              decode_alg_error_reason/0]).
 
 -type alg() :: hmac() | ecdsa() | rsa() | none.
 -type hmac() :: hs256 | hs384 | hs512.
@@ -42,6 +43,8 @@
 
 -type sign_key() :: hmac_key() | public_key:public_key().
 -type verify_key() :: hmac_key() | public_key:private_key().
+
+-type decode_alg_error_reason() :: unsupported_alg.
 
 -spec reserved_header_parameter_names() ->
         [jose:header_parameter_name()].
