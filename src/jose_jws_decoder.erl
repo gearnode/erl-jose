@@ -45,7 +45,8 @@
       | jose_x5tS256:decode_error_reason()
       %% | jose_media_type:decode_error_reason()
       | not_allowed_parameter_name
-      | unsupported_parameter_name.
+      | unsupported_parameter_name
+      | mismatch_algorithm.
 
 -type header_step() ::
         alg
@@ -58,14 +59,25 @@
       | 'x5t#S256'
       | typ
       | cty
-      | crit.
+      | crit
+      | b64
+      | extra_data.
 
--spec decode_compact(term(), jose:alg(), options()) ->
+-spec decode_compact(binary(), jose:alg(), options()) ->
         {ok, jose:jws()} | {error, error()}.
-decode_compact(Bin, _Algorithm, Options) ->
+decode_compact(Bin, Algorithm, Options) ->
+  decode_compact(Bin, Algorithm, Key, Options).
   try
-    {P1, _P2, _P3} = split(Bin),
-    _Header = decode_header(P1, Options)
+    {P1, P2, P3} = split(Bin),
+    Header = decode_header(P1, Options),
+    Body = decode_body(Header, P2),
+    _Signature = decode_signature(P3),
+    case maps:get(alg, Header) of
+      Algorithm ->
+        {Header, Body};
+      _ ->
+        throw({error, #{part => header, reason => mismatch_algorithm}})
+    end
   catch
     throw:{error, Reason} ->
       {error, Reason}
@@ -74,8 +86,8 @@ decode_compact(Bin, _Algorithm, Options) ->
 -spec split(binary()) -> {binary(), binary(), binary()}.
 split(Bin) ->
   case binary:split(Bin, <<$.>>, [global]) of
-    [Header, Payload, Signature] ->
-      {Header, Payload, Signature};
+    [Header, Body, Signature] ->
+      {Header, Body, Signature};
     Value ->
       throw({error, #{reason => {invalid_format, Value}}})
   end.
@@ -144,7 +156,7 @@ decode_header(jwk, Data, Options, State) ->
       error ->
         State;
       {ok, Value} when is_binary(Value) ->
-        case jose_jwk:decode(Value) of
+        case jose_jwk:decode(Value, Options) of
           {ok, JWK} ->
             State#{jwk => JWK};
           {error, Reason} ->
@@ -297,7 +309,7 @@ decode_header(cty, Data, Options, State) ->
   decode_header(crit, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.11
-decode_header(crit, Data, _Options, State) ->
+decode_header(crit, Data, Options, State) ->
   ReservedParameterNames = jose_jws:reserved_header_parameter_names() ++
     jose_jwa:reserved_header_parameter_names(),
   F =
@@ -331,7 +343,49 @@ decode_header(crit, Data, _Options, State) ->
                #{key => crit, part => header,
                  reason => {invalid_format, Value}}})
     end,
-  State1.
+  decode_header(b64, Data, Options, State1);
+
+%% https://datatracker.ietf.org/doc/html/rfc7797#section-3
+decode_header(b64, Data, Options, State) ->
+  State1 =
+    case maps:find(<<"b64">>, Data) of
+      error ->
+        State;
+      {ok, Value} when is_boolean(Value) ->
+        State#{b64 => Value};
+      {ok, Value} ->
+        throw({error, #{key => b64, part => header,
+                        reason => {invalid_format, Value}}})
+    end,
+  decode_header(extra_data, Data, Options, State1);
+
+decode_header(extra_data, Data, _, State) ->
+  Keys = lists:map(fun atom_to_binary/1, maps:keys(State)),
+  ExtraData = maps:without(Keys, Data),
+  maps:merge(State, ExtraData).
+
+-spec decode_body(jose_jws:header(), binary()) -> binary().
+decode_body(Header, Bin) ->
+  case maps:get(b64, Header, true) of
+    false ->
+      Bin;
+    true ->
+      case b64url:decode(Bin, [nopad]) of
+        {ok, Body} ->
+          Body;
+        {error, Reason} ->
+          throw({error, #{part => body, reason => Reason}})
+      end
+  end.
+
+-spec decode_signature(binary()) -> binary().
+decode_signature(Bin) ->
+  case b64url:decode(Bin, [nopad]) of
+    {ok, Signature} ->
+      Signature;
+    {error, Reason} ->
+      throw({error, #{part => signature, reason => Reason}})
+  end.
 
 -spec is_certificate_chain_trustable(jose:certificate_chain(), options()) ->
         boolean().
