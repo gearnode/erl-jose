@@ -69,14 +69,12 @@ decode_compact(Bin, Algorithm, Options) ->
   try
     {P1, P2, P3} = split(Bin),
     Header = decode_header(P1, Options),
+    is_algorithm_match(Header, Algorithm) orelse
+      throw({error, #{part => header, reason => mismatch_algorithm}}),
+
     Body = decode_body(Header, P2),
     _Signature = decode_signature(P3),
-    case maps:get(alg, Header) of
-      Algorithm ->
-        {Header, Body};
-      _ ->
-        throw({error, #{part => header, reason => mismatch_algorithm}})
-    end
+    {Header, Body}
   catch
     throw:{error, Reason} ->
       {error, Reason}
@@ -396,3 +394,7 @@ is_certificate_chain_trustable([Root | _], Options) ->
     error ->
       false
   end.
+
+-spec is_algorithm_match(jose_jws:header(), jose:alg()) -> boolean().
+is_algorithm_match(Header, Algorithm) ->
+  maps:get(alg, Header) =:= Algorithm.
