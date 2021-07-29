@@ -18,7 +18,13 @@
 
 -export_type([options/0, error/0, error_reason/0]).
 
--type options() :: map().
+-type options() ::
+        #{trusted_remotes =>
+            #{cacertfile => file:filename_all(),
+              certificates => [jose:certificate_thumbprint()],
+              public_keys => [jose:certificate_thumbprint()]},
+          certificate_store => et_gen_server:ref()}.
+
 
 -type state() :: map().
 
