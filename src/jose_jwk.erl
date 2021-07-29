@@ -36,6 +36,8 @@
               prime_factor/0,
               oth/0]).
 
+-export_type([decode_error/0]).
+
 -type jwk() :: oct() | rsa() | ec().
 
 -type ec() :: ec_public() | ec_private().
@@ -148,6 +150,8 @@
 -type oth() :: #{r := prime_factor(),
                  d := exponent(),
                  t := non_neg_integer()}.
+
+-type decode_error() :: jose_jwk_decoder:error().
 
 -spec to_record(jwk()) -> term().
 to_record(#{kty := 'RSA', n := N, e := E, d := D} = JWK) ->
