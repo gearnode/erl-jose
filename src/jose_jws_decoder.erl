@@ -66,7 +66,6 @@
 -spec decode_compact(binary(), jose:alg(), options()) ->
         {ok, jose:jws()} | {error, error()}.
 decode_compact(Bin, Algorithm, Options) ->
-  decode_compact(Bin, Algorithm, Key, Options).
   try
     {P1, P2, P3} = split(Bin),
     Header = decode_header(P1, Options),
