@@ -16,13 +16,32 @@
 
 -export([decode_compact/3]).
 
--export_type([options/0, decode_error_reason/0]).
+-export_type([options/0, error/0, error_reason/0]).
 
 -type options() :: map().
 
 -type state() :: map().
 
--type decode_header_step() ::
+-type error() ::
+        #{key => atom(),
+          part => header | body | signature,
+          reason := error_reason()}.
+
+-type error_reason() ::
+        {invalid_format, Value :: term()}
+      | invalid_encoding
+      | missing
+      | jose_jwk:decode_error()
+      | untrusted_certificate
+      | jose_x5u:decode_error_reason()
+      | jose_x5c:decode_error_reason()
+      | jose_x5t:decode_error_reason()
+      | jose_x5tS256:decode_error_reason()
+      %% | jose_media_type:decode_error_reason()
+      | not_allowed_parameter_name
+      | unsupported_parameter_name.
+
+-type header_step() ::
         alg
       | jku
       | jwk
@@ -35,13 +54,8 @@
       | cty
       | crit.
 
--type decode_error_reason() ::
-        invalid_format
-      | {invalid_header, invalid_format}.
-
-
 -spec decode_compact(term(), jose:alg(), options()) ->
-        {ok, jose:jws()} | {error, decode_error_reason()}.
+        {ok, jose:jws()} | {error, error()}.
 decode_compact(Bin, _Algorithm, Options) ->
   try
     {P1, _P2, _P3} = split(Bin),
@@ -56,8 +70,8 @@ split(Bin) ->
   case binary:split(Bin, <<$.>>, [global]) of
     [Header, Payload, Signature] ->
       {Header, Payload, Signature};
-    _ ->
-      throw({error, invalid_format})
+    Value ->
+      throw({error, #{reason => {invalid_format, Value}}})
   end.
 
 -spec decode_header(binary(), options()) -> jose_jws:header().
@@ -67,16 +81,18 @@ decode_header(Bin, Options) ->
       case json:parse(DecodedBin, #{duplicate_key_handling => error}) of
         {ok, Data} when is_map(Data) ->
           decode_header(alg, Data, Options, #{});
-        _ ->
+        {ok, Value} ->
           throw({error,
-                 #{part => header, reason => invalid_format}})
+                 #{part => header, reason => {invalid_format, Value}}});
+        {error, Reason} ->
+          throw({error, #{part => header, reason => Reason}})
       end;
     {error, _} ->
       throw({error,
              #{part => header, reason => invalid_encoding}})
   end.
 
--spec decode_header(decode_header_step(), map(), options(), state()) ->
+-spec decode_header(header_step(), map(), options(), state()) ->
         jose_jws:header().
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.1
 decode_header(alg, Data, Options, State) ->
@@ -93,9 +109,10 @@ decode_header(alg, Data, Options, State) ->
             throw({error,
                    #{key => alg, part => header, reason => Reason}})
         end;
-      {ok, _} ->
+      {ok, Value} ->
         throw({error,
-               #{key => alg, part => header, reason => invalid_format}})
+               #{key => alg, part => header,
+                 reason => {invalid_format, Value}}})
     end,
   decode_header(jku, Data, Options, State1);
 
@@ -107,9 +124,10 @@ decode_header(jku, Data, Options, State) ->
         State;
       {ok, Value} when is_binary(Value) ->
         State#{jku => Value};
-      {ok, _} ->
+      {ok, Value} ->
         throw({error,
-               #{key => jku, part => header, reason => invalid_format}})
+               #{key => jku, part => header,
+                 reason => {invalid_format, Value}}})
     end,
   decode_header(jwk, Data, Options, State1);
 
@@ -127,9 +145,10 @@ decode_header(jwk, Data, Options, State) ->
             throw({error,
                    #{key => jwk, part => header, reason => Reason}})
         end;
-      {ok, _} ->
+      {ok, Value} ->
         throw({error,
-               #{key => jwk, part => header, reason => invalid_format}})
+               #{key => jwk, part => header,
+                 reason => {invalid_format, Value}}})
     end,
   decode_header(kid, Data, Options, State1);
 
@@ -141,9 +160,10 @@ decode_header(kid, Data, Options, State) ->
         State;
       {ok, Value} when is_binary(Value) ->
         State#{kid => Value};
-      {ok, _} ->
+      {ok, Value} ->
         throw({error,
-               #{key => kid, part => header, reason => invalid_format}})
+               #{key => kid, part => header,
+                 reason => {invalid_format, Value}}})
     end,
   decode_header(x5u, Data, Options, State1);
 
@@ -242,9 +262,10 @@ decode_header(typ, Data, Options, State) ->
             throw({error,
                    #{key => typ, part => header, reason => Reason}})
         end;
-      {ok, _} ->
+      {ok, Value} ->
         throw({error,
-               #{key => typ, part => header, reason => invalid_format}})
+               #{key => typ, part => header,
+                 reason => {invalid_format, Value}}})
     end,
   decode_header(cty, Data, Options, State1);
 
@@ -262,15 +283,49 @@ decode_header(cty, Data, Options, State) ->
             throw({error,
                    #{key => cty, part => header, reason => Reason}})
         end;
-      {ok, _} ->
+      {ok, Value} ->
         throw({error,
-               #{key => cty, part => header, reason => invalid_format}})
+               #{key => cty, part => header,
+                 reason => {invalid_format, Value}}})
     end,
   decode_header(crit, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.11
-decode_header(crit, _Data, _Options, State) ->
-  State.
+decode_header(crit, Data, _Options, State) ->
+  ReservedParameterNames = jose_jws:reserved_header_parameter_names() ++
+    jose_jwa:reserved_header_parameter_names(),
+  F =
+    fun
+      (ParameterName) when is_binary(ParameterName) ->
+        case lists:member(ParameterName, ReservedParameterNames) of
+          true ->
+            throw({error, #{key => crit, part => header,
+                            reason => {unallowed, ParameterName}}});
+          false ->
+            case lists:member(ParameterName, jose_jws:supported_crits()) of
+              true ->
+                ParameterName;
+              false ->
+                throw({error, #{key => crit, part => header,
+                                reason => {unsupported, ParameterName}}})
+            end
+        end;
+      (Value) ->
+        throw({error, #{key => crit, part => header,
+                        reason => {invalid_format, Value}}})
+    end,
+  State1 =
+    case maps:find(<<"crit">>, Data) of
+      error ->
+        State;
+      {ok, Values} when is_list(Values) ->
+        State#{crit => lists:map(F, Values)};
+      {ok, Value} ->
+        throw({error,
+               #{key => crit, part => header,
+                 reason => {invalid_format, Value}}})
+    end,
+  State1.
 
 -spec is_certificate_chain_trustable(jose:certificate_chain(), options()) ->
         boolean().
