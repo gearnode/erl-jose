@@ -149,7 +149,7 @@ decode_header(jku, Data, Options, State) ->
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.3
 decode_header(jwk, Data, Options, State) ->
   State1 =
-    case maps:find(<<"jkw">>, Data) of
+    case maps:find(<<"jwk">>, Data) of
       error ->
         State;
       {ok, Value} when is_binary(Value) ->
