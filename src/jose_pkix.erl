@@ -42,7 +42,7 @@ get_cert_chain_pubkey([]) ->
 get_cert_chain_pubkey([Root | _] = Chain) ->
   case public_key:pkix_path_validation(Root, Chain, []) of
     {ok, {PublicKeyInfo, _}} ->
-      PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey;
+      {ok, PublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey};
     {error, Reason} ->
       {error, {invalid_certificate_chain, Reason}}
   end.
