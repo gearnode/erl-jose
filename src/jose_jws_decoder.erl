@@ -26,7 +26,7 @@
           certificate_store => et_gen_server:ref()}.
 
 
--type state() :: map().
+-type state() :: #{jws => map(), key => term(), cert => term()}.
 
 -type error() ::
         #{key => atom(),
@@ -111,7 +111,7 @@ decode_header(Bin, Options) ->
         jose_jws:header().
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.1
 decode_header(alg, Data, Options, State) ->
-  State1 =
+  JWS =
     case maps:find(<<"alg">>, Data) of
       error ->
         throw({error,
@@ -119,7 +119,7 @@ decode_header(alg, Data, Options, State) ->
       {ok, Value} when is_binary(Value) ->
         case jose_jwa:decode_alg(Value) of
           {ok, Algorithm} ->
-            State#{alg => Algorithm};
+            #{alg => Algorithm};
           {error, Reason} ->
             throw({error,
                    #{key => alg, part => header, reason => Reason}})
@@ -129,16 +129,16 @@ decode_header(alg, Data, Options, State) ->
                #{key => alg, part => header,
                  reason => {invalid_format, Value}}})
     end,
-  decode_header(kid, Data, Options, State1);
+  decode_header(kid, Data, Options, State#{jws => JWS});
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.4
-decode_header(kid, Data, Options, State) ->
+decode_header(kid, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"kid">>, Data) of
       error ->
         State;
       {ok, Value} when is_binary(Value) ->
-        State#{kid => Value};
+        State#{jws => JWS#{kid => Value}};
       {ok, Value} ->
         throw({error,
                #{key => kid, part => header,
@@ -147,13 +147,13 @@ decode_header(kid, Data, Options, State) ->
   decode_header(jku, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.2
-decode_header(jku, Data, Options, State) ->
+decode_header(jku, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"jku">>, Data) of
       error ->
         State;
       {ok, Value} when is_binary(Value) ->
-        State#{jku => Value};
+        State#{jws => JWS#{jku => Value}};
       {ok, Value} ->
         throw({error,
                #{key => jku, part => header,
@@ -162,7 +162,7 @@ decode_header(jku, Data, Options, State) ->
   decode_header(jwk, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.3
-decode_header(jwk, Data, Options, State) ->
+decode_header(jwk, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"jwk">>, Data) of
       error ->
@@ -170,7 +170,7 @@ decode_header(jwk, Data, Options, State) ->
       {ok, Value} when is_binary(Value) ->
         case jose_jwk:decode(Value, Options) of
           {ok, JWK} ->
-            State#{jwk => JWK};
+            State#{jws => JWS#{jwk => JWK}, key => jose_jwk:to_record(JWK)};
           {error, Reason} ->
             throw({error,
                    #{key => jwk, part => header, reason => Reason}})
@@ -183,7 +183,7 @@ decode_header(jwk, Data, Options, State) ->
   decode_header(x5u, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.5
-decode_header(x5u, Data, Options, State) ->
+decode_header(x5u, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"x5u">>, Data) of
       error ->
@@ -198,7 +198,7 @@ decode_header(x5u, Data, Options, State) ->
               throw({error,
                      #{key => x5u, part => header,
                        reason => untrusted_certificate}}),
-            State#{x5u => Value};
+            State#{jws => JWS#{x5u => Value}, cert => lists:last(Chain)};
           {error, Reason} ->
             throw({error,
                    #{key => x5u, part => header, reason => Reason}})
@@ -207,7 +207,7 @@ decode_header(x5u, Data, Options, State) ->
   decode_header(x5c, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.6
-decode_header(x5c, Data, Options, State) ->
+decode_header(x5c, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"x5c">>, Data) of
       error ->
@@ -221,7 +221,16 @@ decode_header(x5c, Data, Options, State) ->
               throw({error,
                      #{key => x5c, part => header,
                        reason => untrusted_certificate}}),
-            State#{x5c => Chain};
+            Certificate = lists:last(Chain),
+            case maps:find(cert, State) of
+              {ok, Certificate} ->
+                State#{jws => JWS#{x5c => Chain}};
+              {ok, _} ->
+                throw({error, #{key => x5c, part => header,
+                                reason => certificate_missmatch}});
+              error ->
+                State#{jws => JWS#{x5c => Chain}, cert => Certificate}
+            end;
           {error, Reason} ->
             throw({error,
                    #{key => x5c, part => header, reason => Reason}})
@@ -230,7 +239,7 @@ decode_header(x5c, Data, Options, State) ->
   decode_header(x5t, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.7
-decode_header(x5t, Data, Options, State) ->
+decode_header(x5t, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"x5t">>, Data) of
       error ->
@@ -238,7 +247,15 @@ decode_header(x5t, Data, Options, State) ->
       {ok, Value} ->
         case jose_x5t:decode(Value) of
           {ok, Thumbprint} ->
-            State#{x5t => Thumbprint};
+            case maps:find(cert, State) of
+              {ok, Certificate} ->
+                jose_pkix:cert_thumbprint(Certificate) =:= Thumbprint orelse
+                  throw({error, #{key => x5t, part => header,
+                                  reason => certificate_missmatch}}),
+                State#{jws => JWS#{x5t => Thumbprint}};
+              error ->
+                State#{jws => JWS#{x5t => Thumbprint}}
+            end;
           {error, Reason} ->
             throw({error,
                    #{key => x5t, part => header, reason => Reason}})
@@ -247,7 +264,7 @@ decode_header(x5t, Data, Options, State) ->
   decode_header('x5t#S256', Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.8
-decode_header('x5t#S256', Data, Options, State) ->
+decode_header('x5t#S256', Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"x5t#S256">>, Data) of
       error ->
@@ -255,7 +272,15 @@ decode_header('x5t#S256', Data, Options, State) ->
       {ok, Value} ->
         case jose_x5tS256:decode(Value) of
           {ok, Thumbprint} ->
-            State#{'x5t#S256' => Thumbprint};
+            case maps:find(cert, State) of
+              {ok, Certificate} ->
+                jose_pkix:cert_thumbprint(Certificate) =:= Thumbprint orelse
+                  throw({error, #{key => 'x5t#S256', part => header,
+                                  reason => certificate_missmatch}}),
+                State#{jws => JWS#{'x5t#S256' => Thumbprint}};
+              error ->
+                State#{jws => JWS#{'x5t#S256' => Thumbprint}}
+            end;
           {error, Reason} ->
             throw({error,
                    #{key => 'x5t#S256', part => header, reason => Reason}})
@@ -264,7 +289,7 @@ decode_header('x5t#S256', Data, Options, State) ->
   decode_header(typ, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.9
-decode_header(typ, Data, Options, State) ->
+decode_header(typ, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"typ">>, Data) of
       error ->
@@ -272,7 +297,7 @@ decode_header(typ, Data, Options, State) ->
       {ok, Value} when is_binary(Value) ->
         case jose_media_type:parse(Value) of
           {ok, MT} ->
-            State#{typ => MT};
+            State#{jws => JWS#{typ => MT}};
           {error, Reason} ->
             throw({error,
                    #{key => typ, part => header, reason => Reason}})
@@ -285,7 +310,7 @@ decode_header(typ, Data, Options, State) ->
   decode_header(cty, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.10
-decode_header(cty, Data, Options, State) ->
+decode_header(cty, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"cty">>, Data) of
       error ->
@@ -293,7 +318,7 @@ decode_header(cty, Data, Options, State) ->
       {ok, Value} when is_binary(Value) ->
         case jose_media_type:parse(Value) of
           {ok, MT} ->
-            State#{cty => MT};
+            State#{jws => JWS#{cty => MT}};
           {error, Reason} ->
             throw({error,
                    #{key => cty, part => header, reason => Reason}})
@@ -306,7 +331,7 @@ decode_header(cty, Data, Options, State) ->
   decode_header(crit, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.11
-decode_header(crit, Data, Options, State) ->
+decode_header(crit, Data, Options, #{jws := JWS} = State) ->
   ReservedParameterNames = jose_jws:reserved_header_parameter_names() ++
     jose_jwa:reserved_header_parameter_names(),
   F =
@@ -334,7 +359,7 @@ decode_header(crit, Data, Options, State) ->
       error ->
         State;
       {ok, Values} when is_list(Values) ->
-        State#{crit => lists:map(F, Values)};
+        State#{jws => JWS#{crit => lists:map(F, Values)}};
       {ok, Value} ->
         throw({error,
                #{key => crit, part => header,
@@ -343,23 +368,23 @@ decode_header(crit, Data, Options, State) ->
   decode_header(b64, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7797#section-3
-decode_header(b64, Data, Options, State) ->
+decode_header(b64, Data, Options, #{jws := JWS} = State) ->
   State1 =
     case maps:find(<<"b64">>, Data) of
       error ->
         State;
       {ok, Value} when is_boolean(Value) ->
-        State#{b64 => Value};
+        State#{jws => JWS#{b64 => Value}};
       {ok, Value} ->
         throw({error, #{key => b64, part => header,
                         reason => {invalid_format, Value}}})
     end,
   decode_header(extra_data, Data, Options, State1);
 
-decode_header(extra_data, Data, _, State) ->
-  Keys = lists:map(fun atom_to_binary/1, maps:keys(State)),
+decode_header(extra_data, Data, _, #{jws := JWS} = State) ->
+  Keys = lists:map(fun atom_to_binary/1, maps:keys(JWS)),
   ExtraData = maps:without(Keys, Data),
-  maps:merge(State, ExtraData).
+  State#{jws => maps:merge(JWS, ExtraData)}.
 
 -spec decode_body(jose_jws:header(), binary()) -> binary().
 decode_body(Header, Bin) ->
