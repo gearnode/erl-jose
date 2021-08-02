@@ -46,7 +46,10 @@
       %% | jose_media_type:decode_error_reason()
       | not_allowed_parameter_name
       | unsupported_parameter_name
-      | mismatch_algorithm.
+      | mismatch_algorithm
+      | certificate_missmatch
+      | pubkey_missmatch
+      | untrusted_certificate.
 
 -type header_step() ::
         alg
@@ -170,7 +173,14 @@ decode_header(jwk, Data, Options, #{jws := JWS} = State) ->
       {ok, Value} when is_binary(Value) ->
         case jose_jwk:decode(Value, Options) of
           {ok, JWK} ->
-            State#{jws => JWS#{jwk => JWK}, key => jose_jwk:to_record(JWK)};
+            case jose_jwk:is_symmetric_key(JWK) of
+              true ->
+                throw({error, #{key => jwk, part => header,
+                                reason => untrusted_public_key}});
+              false ->
+                State#{jws => JWS#{jwk => JWK},
+                       key => jose_jwk:to_record(JWK)}
+            end;
           {error, Reason} ->
             throw({error,
                    #{key => jwk, part => header, reason => Reason}})
@@ -198,7 +208,17 @@ decode_header(x5u, Data, Options, #{jws := JWS} = State) ->
               throw({error,
                      #{key => x5u, part => header,
                        reason => untrusted_certificate}}),
-            State#{jws => JWS#{x5u => Value}, cert => lists:last(Chain)};
+            Certificate = lists:last(Chain),
+            PubKey = jose_pkix:get_cert_pubkey(Certificate),
+            case maps:get(key, State) of
+              {ok, PubKey} ->
+                State#{jws => JWS#{x5u => Value}, cert => Certificate};
+              {ok, _} ->
+                throw({error, #{key => x5u, part => header,
+                                reason => pubkey_missmatch}});
+              error ->
+                State#{jws => JWS#{x5u => Value}, cert => Certificate}
+            end;
           {error, Reason} ->
             throw({error,
                    #{key => x5u, part => header, reason => Reason}})
@@ -224,7 +244,16 @@ decode_header(x5c, Data, Options, #{jws := JWS} = State) ->
             Certificate = lists:last(Chain),
             case maps:find(cert, State) of
               {ok, Certificate} ->
-                State#{jws => JWS#{x5c => Chain}};
+                PubKey = jose_pkix:get_cert_pubkey(Certificate),
+                case maps:find(key, State) of
+                  {ok, PubKey} ->
+                    State#{jws => JWS#{x5c => Chain}};
+                  {ok, _} ->
+                    throw({error, #{key => x5c, part => header,
+                                    reason => pubkey_missmatch}});
+                  error ->
+                    State#{jws => JWS#{x5c => Chain}}
+                end;
               {ok, _} ->
                 throw({error, #{key => x5c, part => header,
                                 reason => certificate_missmatch}});

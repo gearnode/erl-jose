@@ -19,7 +19,8 @@
 -export([decode/1, decode/2,
          encode/1, encode/2,
          to_record/1, from_record/1,
-         from_certificate_chain/1]).
+         from_certificate_chain/1,
+         is_symmetric_key/1, is_asymmetric_key/1]).
 
 -export_type([jwk/0,
               rsa/0,
@@ -152,6 +153,16 @@
                  t := non_neg_integer()}.
 
 -type decode_error() :: jose_jwk_decoder:error().
+
+-spec is_symmetric_key(jwk()) -> boolean().
+is_symmetric_key(#{kty := oct}) ->
+  true;
+is_symmetric_key(#{kty := _}) ->
+  false.
+
+-spec is_asymmetric_key(jwk()) -> boolean().
+is_asymmetric_key(JWK) ->
+  is_symmetric_key(JWK) =:= false.
 
 -spec to_record(jwk()) -> term().
 to_record(#{kty := 'RSA', n := N, e := E, d := D} = JWK) ->
