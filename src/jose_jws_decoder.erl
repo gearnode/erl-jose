@@ -129,6 +129,21 @@ decode_header(alg, Data, Options, State) ->
                #{key => alg, part => header,
                  reason => {invalid_format, Value}}})
     end,
+  decode_header(kid, Data, Options, State1);
+
+%% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.4
+decode_header(kid, Data, Options, State) ->
+  State1 =
+    case maps:find(<<"kid">>, Data) of
+      error ->
+        State;
+      {ok, Value} when is_binary(Value) ->
+        State#{kid => Value};
+      {ok, Value} ->
+        throw({error,
+               #{key => kid, part => header,
+                 reason => {invalid_format, Value}}})
+    end,
   decode_header(jku, Data, Options, State1);
 
 %% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.2
@@ -163,21 +178,6 @@ decode_header(jwk, Data, Options, State) ->
       {ok, Value} ->
         throw({error,
                #{key => jwk, part => header,
-                 reason => {invalid_format, Value}}})
-    end,
-  decode_header(kid, Data, Options, State1);
-
-%% https://datatracker.ietf.org/doc/html/rfc7515#section-4.1.4
-decode_header(kid, Data, Options, State) ->
-  State1 =
-    case maps:find(<<"kid">>, Data) of
-      error ->
-        State;
-      {ok, Value} when is_binary(Value) ->
-        State#{kid => Value};
-      {ok, Value} ->
-        throw({error,
-               #{key => kid, part => header,
                  reason => {invalid_format, Value}}})
     end,
   decode_header(x5u, Data, Options, State1);
