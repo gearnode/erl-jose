@@ -13,7 +13,8 @@
     b64,
     ssl,
     inets,
-    et
+    et,
+    sqlite
    ]},
   {env,[]},
   {modules, []},
