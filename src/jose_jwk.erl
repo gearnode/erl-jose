@@ -20,7 +20,8 @@
          encode/1, encode/2,
          to_record/1, from_record/1,
          from_certificate_chain/1,
-         is_symmetric_key/1, is_asymmetric_key/1]).
+         is_symmetric_key/1, is_asymmetric_key/1,
+         is_private_key/1, is_public_key/1]).
 
 -export_type([jwk/0,
               rsa/0,
@@ -163,6 +164,20 @@ is_symmetric_key(#{kty := _}) ->
 -spec is_asymmetric_key(jwk()) -> boolean().
 is_asymmetric_key(JWK) ->
   is_symmetric_key(JWK) =:= false.
+
+-spec is_private_key(jwk()) -> boolean().
+is_private_key(#{kty := 'EC', d := _}) ->
+  true;
+is_private_key(#{kty := 'RSA', d := _}) ->
+  true;
+is_private_key(#{kty := oct}) ->
+  true;
+is_private_key(_) ->
+  false.
+
+-spec is_public_key(jwk()) -> boolean().
+is_public_key(JWK) ->
+  is_private_key(JWK) =:= false.
 
 -spec to_record(jwk()) -> term().
 to_record(#{kty := 'RSA', n := N, e := E, d := D} = JWK) ->
