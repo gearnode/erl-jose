@@ -23,7 +23,9 @@
             #{cacertfile => file:filename_all(),
               certificates => [jose:certificate_thumbprint()],
               public_keys => [jose:certificate_thumbprint()]},
-          certificate_store => et_gen_server:ref()}.
+          certificate_store => et_gen_server:ref(),
+          key_store => et_gen_server:ref(),
+          key => term()}.
 
 
 -type state() :: #{jws => map(), key => term(), cert => term()}.
@@ -98,7 +100,8 @@ decode_header(Bin, Options) ->
     {ok, DecodedBin} ->
       case json:parse(DecodedBin, #{duplicate_key_handling => error}) of
         {ok, Data} when is_map(Data) ->
-          decode_header(alg, Data, Options, #{});
+          State = maps:with([key], Options),
+          decode_header(alg, Data, Options, State);
         {ok, Value} ->
           throw({error,
                  #{part => header, reason => {invalid_format, Value}}});
@@ -173,11 +176,17 @@ decode_header(jwk, Data, Options, #{jws := JWS} = State) ->
       {ok, Value} when is_binary(Value) ->
         case jose_jwk:decode(Value, Options) of
           {ok, JWK} ->
-            case jose_jwk:is_symmetric_key(JWK) of
-              true ->
+            Key = jose_jwk:to_record(JWK),
+            is_key_trustable(Key, Options) orelse
+              throw({error, #{key => jwk, part => header,
+                              reason => untrusted_public_key}}),
+            case maps:find(key, State) of
+              {ok, Key} ->
+                State#{jws => JWS#{jwk => JWK}};
+              {ok, _} ->
                 throw({error, #{key => jwk, part => header,
-                                reason => untrusted_public_key}});
-              false ->
+                                reason => pubkey_missmatch}});
+              error ->
                 State#{jws => JWS#{jwk => JWK},
                        key => jose_jwk:to_record(JWK)}
             end;
@@ -452,3 +461,14 @@ is_certificate_chain_trustable([Root | _], Options) ->
 -spec is_algorithm_match(jose_jws:header(), jose:alg()) -> boolean().
 is_algorithm_match(Header, Algorithm) ->
   maps:get(alg, Header) =:= Algorithm.
+
+-spec is_key_trustable(jose:jwk(), options()) -> boolean().
+is_key_trustable(Key, Options) ->
+  PubKey = jose_pkix:privkey_to_pubkey(Key),
+  Store = maps:get(key_store, Options, key_store_default),
+  case jose_key_store:find(Store, PubKey) of
+    {ok, _} ->
+      true;
+    error ->
+      false
+  end.
