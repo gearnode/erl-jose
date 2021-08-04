@@ -180,6 +180,20 @@ is_public_key(JWK) ->
   is_private_key(JWK) =:= false.
 
 -spec to_record(jwk()) -> term().
+to_record(#{kty := 'RSA', n := N, e := E, d := D, oth := Oth} = JWK) ->
+  F = fun (#{r := OR, d := OD, t := OT}) ->
+          #'OtherPrimeInfo'{prime = OR, exponent = OD, coefficient = OT}
+      end,
+  #'RSAPrivateKey'{version = 'multi',
+                   modulus = N,
+                   publicExponent = E,
+                   privateExponent = D,
+                   prime1 = maps:get(p, JWK, undefined),
+                   prime2 = maps:get(q, JWK, undefined),
+                   exponent1 = maps:get(dp, JWK, undefined),
+                   exponent2 = maps:get(dq, JWK, undefined),
+                   coefficient = maps:get(qi, JWK, undefined),
+                   otherPrimeInfos = lists:map(F, Oth)};
 to_record(#{kty := 'RSA', n := N, e := E, d := D} = JWK) ->
   #'RSAPrivateKey'{version = 'two-prime',
                    modulus = N,
